@@ -1,0 +1,2 @@
+# Python 3.9+; no third-party packages needed for the agents.
+# The browser UI will add: streamlit
