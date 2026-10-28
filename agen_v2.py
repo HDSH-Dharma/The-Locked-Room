@@ -7,8 +7,9 @@ Inferensi    : universal instantiation -> reduksi ke proposisional -> CNF -> res
                KB ⊨ α dibuktikan dengan menurunkan klausa kosong dari KB ∧ ¬α.
 Relevansi    : bukti tidak relevan jika predikatnya tidak dipakai aturan mana pun
                (misalnya motif), atau sudah tersirat dari aturan (KB_aturan ⊨ bukti).
-Gerak        : classical planning ala PDDL (skema aksi + BFS), dengan aksi Tuduh yang
-               prasyaratnya KB ⊨ Pelaku(s) ∧ Senjata(w) ∧ TKP(r).
+Gerak        : skema aksi (PRECOND/EFFECT) yang mendefinisikan ACTIONS(s) dan RESULT(s, a).
+Tuduh        : prasyaratnya fakta Terbukti(x, w, r), yang hanya di-TELL ke KB ketika
+               KB ⊨ Pelaku(x) ∧ Senjata(w) ∧ TKP(r).
 """
 import time
 from fol import (Atom, Not, And, Or, Imp, Iff, ForAll, Exists, Neq, instantiate, to_cnf, show, atom_str)
@@ -164,6 +165,7 @@ class AgenV2:
         static |= {('Serong', a, b) for a in R_IDS for b in serong(a)}
         self.planner = Planner(objects, static)
         self.topik = {}           # hasil menguping: ('r', ruangan) / ('s', tersangka) -> [topik]
+        self.terbukti = None      # World yang sudah terbukti; diisi saat fakta Terbukti di-TELL
         self.stats.update(teleport_ditahan=0)
 
     def dengar(self, jenis, target, topik):
@@ -215,6 +217,7 @@ class AgenV2:
             relevan, alasan = self._relevansi(clue, added)
             before = dict(self.state)
             steps, nq, mx = self._update_state()
+            self._cek_terbukti()
             dt = (time.perf_counter() - t0) * 1000
             self.stats['update'] += 1
             self.stats['waktu_ms'] += dt
@@ -251,6 +254,17 @@ class AgenV2:
                 self.state[(cat, v)] = 'pasti'
         return total, nq, mx
 
+    def _cek_terbukti(self):
+        """Kalau KB ⊨ Pelaku(x) ∧ Senjata(w) ∧ TKP(r), TELL fakta Terbukti(x, w, r).
+        Fakta ini prasyarat skema Tuduh, jadi AI tidak bisa menuduh tanpa bukti."""
+        if self.terbukti:
+            return
+        pasti = {cat: v for (cat, v), st in self.state.items() if st == 'pasti'}
+        if all(k in pasti for k in 'swr'):
+            xs, ws, rs = pasti['s'], pasti['w'], pasti['r']
+            self.kb.tell(Atom('Terbukti', C[xs], C[ws], C[rs]), 'inferensi: KB ⊨ jawaban')
+            self.terbukti = World(xs, ws, rs)
+
     def status(self):
         return dict(self.state)
 
@@ -262,10 +276,8 @@ class AgenV2:
 
     # ---- planning ----
     def tuduhan(self):
-        pasti = {cat: v for (cat, v), st in self.state.items() if st == 'pasti'}
-        if all(k in pasti for k in 'swr'):
-            return World(pasti['s'], pasti['w'], pasti['r'])   # prasyarat aksi Tuduh terpenuhi
-        return None
+        """Aksi Tuduh hanya bisa dipilih kalau fakta Terbukti(x, w, r) sudah ada di KB."""
+        return self.terbukti
 
     HEMAT_MIN_TELEPORT = 1
 

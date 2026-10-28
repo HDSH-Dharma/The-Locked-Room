@@ -3,12 +3,14 @@ Classical planning ala PDDL untuk Detektif AI v2 (materi Reasoning, slide 10–1
 
 State   : konjungsi fluent ground, misalnya Di(AI, Dapur) ∧ Digeledah(Gudang)
 Aksi    : skema dengan PRECOND dan EFFECT (add/delete list)
-Planner : forward state-space search (BFS), jadi rencana yang ditemukan paling pendek
+Planner : forward state-space search. BFS dipakai sekarang; A* (f(n) = g(n) + h(n)) sudah
+          tersedia di Planner.astar dan akan dipakai v2 setelah heuristic-nya dipasang.
 
 Isi bukti baru diketahui setelah aksi dijalankan, jadi planner tidak bisa merencanakan
 sampai "tuduh" dari awal. Agen memakai online replanning: rencanakan sampai mendapat
 informasi baru, jalankan satu aksi, amati, perbarui KB, lalu rencanakan ulang.
 """
+import heapq
 from collections import deque
 from itertools import product
 
@@ -54,8 +56,10 @@ SCHEMAS = [
            add=[('Di', 'AI', '?b')], dele=[('Di', 'AI', '?a'), ('Punya', 'AI', 'Teleport')]),
 ]
 STATIC_PRED = ('Bersebelahan', 'Lokasi', 'AdaBukti', 'Serong')
-TUDUH = Schema('Tuduh', [('?s', 'orang'), ('?w', 'senjata'), ('?t', 'ruang')],
-               check='KB ⊨ Pelaku(?s) ∧ Senjata(?w) ∧ TKP(?t)')
+# Fakta Terbukti(x, w, r) hanya ditambahkan oleh mesin inferensi ketika
+# KB ⊨ Pelaku(x) ∧ Senjata(w) ∧ TKP(r); jadi prasyarat Tuduh tetap berupa fakta di state.
+TUDUH = Schema('Tuduh', [('?x', 'orang'), ('?w', 'senjata'), ('?r', 'ruang')],
+               pre=[('Terbukti', '?x', '?w', '?r')], add=[('Selesai',)])
 
 
 class Planner:
@@ -80,8 +84,49 @@ class Planner:
             if all(f in state or f in self.static for f in pre) and not any(f in state for f in pre_not):
                 yield g
 
+    @staticmethod
+    def _jejak(parent, cur):
+        plan = []
+        while parent[cur]:
+            cur, act = parent[cur]
+            plan.append(act)
+        return plan[::-1]
+
+    def astar(self, state, goal, h):
+        """A*: f(n) = g(n) + h(n), setiap aksi berbiaya 1.
+
+        goal(state) -> bool, h(state) -> perkiraan biaya sisa (harus admissible).
+        Mengembalikan (rencana, simpul diekspansi). Tes tujuan dilakukan saat simpul diambil
+        dari antrean, sehingga rencana pertama yang ditemukan adalah yang terpendek.
+        """
+        start = frozenset(state)
+        tie = 0
+        frontier = [(h(start), tie, 0, start)]
+        parent = {start: None}
+        best_g = {start: 0}
+        closed = set()
+        expanded = 0
+        while frontier:
+            _, _, g, s = heapq.heappop(frontier)
+            if s in closed:
+                continue
+            if goal(s):
+                return self._jejak(parent, s), expanded
+            closed.add(s)
+            expanded += 1
+            for name, combo, _, _, add, dele in self.applicable(s):
+                nxt = (s - frozenset(dele)) | frozenset(add)
+                ng = g + 1
+                if nxt in closed or ng >= best_g.get(nxt, float('inf')):
+                    continue
+                best_g[nxt] = ng
+                parent[nxt] = (s, (name, combo))
+                tie += 1
+                heapq.heappush(frontier, (ng + h(nxt), tie, ng, nxt))
+        return None, expanded
+
     def plan(self, state, goal):
-        """BFS dari state sampai goal(state) benar. Mengembalikan (rencana, simpul diperiksa)."""
+        """BFS dari state sampai goal(state) benar. Mengembalikan (rencana, simpul diekspansi)."""
         start = frozenset(state)
         if goal(start):
             return [], 1
@@ -98,10 +143,6 @@ class Planner:
                     continue
                 parent[nxt] = (s, (name, combo))
                 if goal(nxt):
-                    plan, cur = [], nxt
-                    while parent[cur]:
-                        cur, act = parent[cur]
-                        plan.append(act)
-                    return plan[::-1], expanded
+                    return self._jejak(parent, nxt), expanded
                 frontier.append(nxt)
         return None, expanded
