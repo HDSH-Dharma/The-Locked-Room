@@ -5,7 +5,7 @@ Folder ini berisi dua versi Detektif AI yang benar-benar dijalankan dan dibandin
 
 | Versi | Materi | Representasi | Inferensi | Gerak |
 |---|---|---|---|---|
-| v1 (`agen_v1.py`) | Lecture 04 · Propositional Logic | 64 model, bukti ditulis sebagai fungsi Python | Model checking | Heuristik buatan sendiri + BFS |
+| v1 (`agen_v1.py`) | Lecture 04 · Propositional Logic | 64 model, bukti ditulis sebagai fungsi Python | Model checking | BFS ke ruangan belum digeledah / tersangka belum ditanya terdekat |
 | v2 (`agen_v2.py`) | Lecture 05 · FOL, Reasoning and Planning | 18 aturan FOL berkuantor + fakta dari bukti | Universal instantiation → CNF → resolusi | Problem formulation (ACTIONS, RESULT, goal test) + A* |
 
 Tidak butuh library tambahan. Cukup Python 3.9 atau lebih baru.

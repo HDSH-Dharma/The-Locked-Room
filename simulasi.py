@@ -246,9 +246,9 @@ def main(n=300):
                     ('Penebak · v1 tapi menuduh saat sisa ≤ 3', rp)):
         L.append(f'| {name} | {r["pecah"]:.1f}% | {r["salah"]:.1f}% | {r["buntu"]:.1f}% | {r["ronde"]:.2f} | {r["aksi"]:.1f} |')
     L += ['\n## 2. Biaya penalaran\n',
-          '| Agen | Waktu per pembaruan KB | Query per pembaruan | Langkah resolusi per pembaruan | Langkah terbanyak dalam satu pembaruan | Node A* per aksi |',
+          '| Agen | Waktu per pembaruan KB | Query per pembaruan | Langkah resolusi per pembaruan | Langkah terbanyak dalam satu pembaruan | Node BFS / A* per aksi |',
           '|---|---|---|---|---|---|',
-          f'| v1 | {r1["ms_update"]:.3f} ms | 0 (cukup saring 64 model) | - | - | - (heuristik) |',
+          f'| v1 | {r1["ms_update"]:.3f} ms | 0 (cukup saring 64 model) | - | - | {r1["simpul"]:.1f} (BFS) |',
           f'| v2 | {r2["ms_update"]:.2f} ms | {r2["query_update"]:.1f} | {r2["langkah_update"]:.0f} | {r2["langkah_max"]} | {r2["simpul"]:.1f} |',
           '\n## 3. Tim bot (3 detektif) melawan Detektif AI\n',
           '| Lawan | Tim menang | Tim salah tuduh | AI menang | Sampai sidang |', '|---|---|---|---|---|',
