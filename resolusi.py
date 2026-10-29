@@ -11,6 +11,8 @@ Strategi yang dipakai (semuanya tetap langkah resolusi biasa):
                          supaya pencarian tidak melebar ke hal yang tidak ditanyakan.
 3. Klausa terpendek dulu.
 Setiap langkah dicatat (induk kiri, induk kanan, hasil) sehingga bukti bisa ditampilkan.
+Literal dan klausa diproses dalam urutan tetap (sorted), jadi jumlah langkah resolusi sama
+persis di setiap run. Tanpa ini urutan set Python berubah-ubah antar-run.
 """
 import heapq
 from collections import defaultdict, deque
@@ -47,7 +49,7 @@ class Prover:
         self.recs[cid] = (lits, label, parents, support)
         self.by_lits[lits] = cid
         self.active.add(cid)
-        for l in lits:
+        for l in sorted(lits):
             self.occ[l].add(cid)
         return cid
 
@@ -77,7 +79,7 @@ class Prover:
             if len(lits) > 1 and any(self.units.get(a, (None,))[0] == p for a, p in lits):
                 self._off(cid)          # tertutup oleh fakta yang sudah diketahui
                 continue
-            contra = [(a, p) for a, p in lits if a in self.units and self.units[a][0] != p]
+            contra = [(a, p) for a, p in sorted(lits) if a in self.units and self.units[a][0] != p]
             if contra:
                 cur, cur_lits = cid, lits
                 for a, p in contra:
@@ -92,7 +94,7 @@ class Prover:
                 if a in self.units:
                     continue
                 self.units[a] = (p, cid)
-                q.extend(self.occ[(a, not p)])
+                q.extend(sorted(self.occ[(a, not p)]))
                 for other in list(self.occ[(a, p)]):
                     if other != cid:
                         self._off(other)
@@ -148,8 +150,8 @@ class Prover:
 
     def _subsumed(self, r):
         """Apakah ada klausa aktif yang merupakan himpunan bagian dari r?"""
-        for l in r:
-            for cid in self.occ.get(l, ()):
+        for l in sorted(r):
+            for cid in sorted(self.occ.get(l, ())):
                 c = self.recs[cid][0]
                 if len(c) <= len(r) and c <= r:
                     return cid
@@ -165,7 +167,7 @@ class Prover:
 
     # ---------- set of support ----------
     def _sos(self):
-        heap = [(len(self.recs[i][0]), i) for i in self.active if self.recs[i][3]]
+        heap = [(len(self.recs[i][0]), i) for i in sorted(self.active) if self.recs[i][3]]
         heapq.heapify(heap)
         done = set()
         while heap:
@@ -174,9 +176,9 @@ class Prover:
                 continue
             done.add(g)
             g_lits = self.recs[g][0]
-            for l in g_lits:
+            for l in sorted(g_lits):
                 comp = (l[0], not l[1])
-                for d in list(self.occ.get(comp, ())):
+                for d in sorted(self.occ.get(comp, ())):
                     if d not in self.active or g not in self.active:
                         continue
                     r = (g_lits - {l}) | (self.recs[d][0] - {comp})
