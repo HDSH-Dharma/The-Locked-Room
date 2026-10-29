@@ -1,8 +1,14 @@
 """
 Data dan generator kasus Rumah Terkunci.
 
-Generator ini identik dengan versi web: nomor kasus yang sama menghasilkan kasus
-yang sama (RNG mulberry32 dan urutan pemanggilan acak disalin persis).
+RNG-nya mulberry32 dengan urutan pemanggilan acak yang sama dengan versi web, jadi nomor
+kasus yang sama selalu menghasilkan kasus yang sama. Sejak aturan proposal (kesaksian tidak
+pernah menyebut pelaku asli), sebagian kasus berbeda dari versi web.
+
+Aturan proposal yang dipegang generator:
+- Kesaksian tidak pernah menyebut pelaku asli. Saksi jujur tidak pernah berkata "Aku yakin
+  <pelaku> pelakunya"; pelaku boleh berbohong dengan menuduh orang lain.
+- Ruang Tamu sudah diperiksa polisi (isinya berkas polisi), jadi tidak ada bukti fisik di sana.
 
 Setiap bukti punya DUA representasi:
 - `prop`  : fungsi atas dunia (pelaku, senjata, TKP), dipakai agen v1 (proposisional)
@@ -27,7 +33,7 @@ ROOMS = [
     ('rtamu', 'Ruang Tamu', 2, 0), ('rmakan', 'Ruang Makan', 2, 1), ('taman', 'Taman', 2, 2),
 ]
 TKP = ['perpus', 'dapur', 'kamar', 'taman']
-START = 'rtamu'
+START = 'rtamu'           # Ruang Tamu: titik awal, sudah diperiksa polisi
 MAX_ROUNDS = 7
 
 S_IDS = [s[0] for s in SUSPECTS]
@@ -111,7 +117,8 @@ def statement_options(x, found):
         if y == x:
             continue
         out.append(dict(weight=2, text=f'{sn(y)} bukan pelakunya.', f=lambda m, y=y: m.s != y, fol=Not(Atom('Pelaku', C[y]))))
-        out.append(dict(weight=2, text=f'Aku yakin {sn(y)} pelakunya.', f=lambda m, y=y: m.s == y, fol=Atom('Pelaku', C[y])))
+        out.append(dict(weight=2, text=f'Aku yakin {sn(y)} pelakunya.', f=lambda m, y=y: m.s == y, fol=Atom('Pelaku', C[y]),
+                        menyebut=y))
     for w in W_IDS:
         low = wn(w).lower()
         out.append(dict(weight=1, text=f'Senjatanya bukan {low}.', f=lambda m, w=w: m.w != w, fol=Not(Atom('Senjata', C[w]))))
@@ -168,7 +175,9 @@ def _try_build(rnd):
             st = dict(text='Aku bukan pelakunya.', f=lambda m, x=x: m.s != x, fol=Not(Atom('Pelaku', C[x])))
             self_used = True
         else:
-            st = weighted_pick(rnd, [o for o in statement_options(x, found) if o['f'](sol) == honest])
+            # Kesaksian tidak pernah menyebut pelaku asli (proposal).
+            st = weighted_pick(rnd, [o for o in statement_options(x, found)
+                                     if o['f'](sol) == honest and o.get('menyebut') != sol.s])
         testimonies.append(make_testimony(x, st, loc[x]))
     models = [m for m in ALL_WORLDS if all(t['prop'](m) for t in testimonies)]
     if len(models) <= 4:
@@ -269,7 +278,7 @@ def _try_build(rnd):
     herrings = [phys(t, None, lambda m: True, [Atom(p)]) for t, p in shuffle(rnd, herring_texts)[:2]]
 
     cap = {r: 0 for r in R_IDS}
-    placeable = [r for r in R_IDS if r != START]
+    placeable = [r for r in R_IDS if r != START]    # Ruang Tamu sudah diperiksa polisi
     for c in shuffle(rnd, chosen + herrings):
         room = c['pref'] if c['pref'] and cap[c['pref']] < 2 else None
         if not room:
