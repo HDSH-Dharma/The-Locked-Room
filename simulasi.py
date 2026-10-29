@@ -18,7 +18,8 @@ from collections import Counter
 from kasus import generate_case, MAX_ROUNDS, S_IDS, W_IDS, TKP, sn, wn, rn
 from fol import clause_str
 from agen_v1 import AgenV1
-from agen_v2 import AgenV2, KB, ATURAN, tampil_aturan, tampil_skema, QUERY_ATOMS
+from agen_v2 import AgenV2, KB, ATURAN, tampil_aturan, QUERY_ATOMS
+from planning import tampil_formulasi
 from agen_baseline import TimBot, DetektifPenebak, polisi_gegabah
 from permainan import Permainan, teks_aksi, teks_jawaban
 import uji_konsistensi
@@ -70,13 +71,13 @@ def transkrip(seed, level='normal'):
     hasil = game.jalan()
     L = []
     L.append(f'# Simulasi Kasus No. {seed:06d}\n')
-    L.append(f'Level **{level}** · Tim bot (3 detektif) melawan **Detektif AI v2** (FOL + resolusi + planning).\n')
+    L.append(f'Level **{level}** · Tim bot (3 detektif) melawan **Detektif AI v2** (FOL + resolusi + A*).\n')
     L.append(f'- Jawaban rahasia (hanya untuk pembaca): **{teks_jawaban(sol)}**')
     L.append(f'- Jasad ditemukan di **{rn(case["found"])}** · jasad {"dipindahkan" if case["moved"] else "tidak dipindahkan"}')
     L.append(f'- Polisi menangkap **{sn(case["arrested"])}** · {"salah tangkap" if case["arrested"] != sol.s else "kebetulan benar"}\n')
     L.append('Cara membaca: **TELL** = fakta FOL yang dimasukkan ke KB dari sebuah bukti. '
              '**ASK** = resolusi untuk setiap Pelaku(x), Senjata(w), dan TKP(r) yang belum pasti. '
-             '**Rencana BFS** = urutan aksi dari planner PDDL; AI hanya menjalankan aksi pertama lalu merencanakan ulang.\n')
+             '**Rencana A*** = urutan aksi terpendek ke informasi baru berikutnya; AI hanya menjalankan aksi pertama lalu merencanakan ulang.\n')
 
     cur = None
     for ronde, siapa, jenis, data in game.events:
@@ -91,7 +92,7 @@ def transkrip(seed, level='normal'):
             L.append(line)
         elif siapa == 'ai' and jenis == 'aksi':
             info = data['info']
-            L.append(f'- **AI**: {teks_aksi(data["act"])}  ·  rencana BFS ({info.get("simpul", 0)} simpul): '
+            L.append(f'- **AI**: {teks_aksi(data["act"])}  ·  rencana A* ({info.get("simpul", 0)} node): '
                      f'`{" → ".join(info.get("rencana", []))}`')
         elif siapa == 'ai' and jenis == 'amati':
             for e in data:
@@ -241,13 +242,13 @@ def main(n=300):
          '## 1. Detektif AI bermain sendiri (tanpa tim)\n',
          '| Agen | Memecahkan kasus | Salah tuduh | Tidak sempat (sidang) | Rata-rata ronde menuduh | Rata-rata aksi |',
          '|---|---|---|---|---|---|']
-    for name, r in (('v1 · proposisional + model checking', r1), ('v2 · FOL + resolusi + planning', r2),
+    for name, r in (('v1 · proposisional + model checking', r1), ('v2 · FOL + resolusi + A*', r2),
                     ('Penebak · v1 tapi menuduh saat sisa ≤ 3', rp)):
         L.append(f'| {name} | {r["pecah"]:.1f}% | {r["salah"]:.1f}% | {r["buntu"]:.1f}% | {r["ronde"]:.2f} | {r["aksi"]:.1f} |')
     L += ['\n## 2. Biaya penalaran\n',
-          '| Agen | Waktu per pembaruan KB | Query per pembaruan | Langkah resolusi per pembaruan | Langkah terbanyak dalam satu pembaruan | Simpul planner per aksi |',
+          '| Agen | Waktu per pembaruan KB | Query per pembaruan | Langkah resolusi per pembaruan | Langkah terbanyak dalam satu pembaruan | Node BFS / A* per aksi |',
           '|---|---|---|---|---|---|',
-          f'| v1 | {r1["ms_update"]:.3f} ms | 0 (cukup saring 64 model) | - | - | - (heuristik) |',
+          f'| v1 | {r1["ms_update"]:.3f} ms | 0 (cukup saring 64 model) | - | - | {r1["simpul"]:.1f} (BFS) |',
           f'| v2 | {r2["ms_update"]:.2f} ms | {r2["query_update"]:.1f} | {r2["langkah_update"]:.0f} | {r2["langkah_max"]} | {r2["simpul"]:.1f} |',
           '\n## 3. Tim bot (3 detektif) melawan Detektif AI\n',
           '| Lawan | Tim menang | Tim salah tuduh | AI menang | Sampai sidang |', '|---|---|---|---|---|',
@@ -272,7 +273,7 @@ def main(n=300):
     for a in abl:
         L.append(f'| {"dengan" if a["pure"] else "tanpa"} eliminasi literal murni | {a["ms"]:.0f} ms | {a["langkah"]} | {a["batas"]} |')
     L += ['\n## Lampiran: aturan FOL v2\n', '```', tampil_aturan(), '```',
-          '\n## Lampiran: skema aksi planning v2\n', '```', tampil_skema(), '```',
+          '\n## Lampiran: problem formulation dan A* v2\n', '```', tampil_formulasi(), '```',
           f'\nWaktu total simulasi: {time.perf_counter() - t0:.0f} detik.']
     import json
     with open(os.path.join(OUT, 'angka.json'), 'w', encoding='utf-8') as f:

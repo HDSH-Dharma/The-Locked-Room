@@ -1,148 +1,141 @@
 """
-Classical planning ala PDDL untuk Detektif AI v2 (materi Reasoning, slide 10–12).
+Search and planning untuk Detektif AI v2: problem formulation (Lecture Note 02) dan A*.
 
-State   : konjungsi fluent ground, misalnya Di(AI, Dapur) ∧ Digeledah(Gudang)
-Aksi    : skema dengan PRECOND dan EFFECT (add/delete list)
-Planner : forward state-space search. BFS dipakai sekarang; A* (f(n) = g(n) + h(n)) sudah
-          tersedia di Planner.astar dan akan dipakai v2 setelah heuristic-nya dipasang.
+State        : (ruangan AI, ruangan yang sudah digeledah, tersangka yang sudah ditanya,
+               masih memegang teleport). KB tidak berubah selama perencanaan, jadi tidak
+               disalin ke setiap state.
+ACTIONS(s)   : Pindah ke ruangan sebelah.
+               Teleport serong 1-2 kotak, kalau masih memegang teleport.
+               Geledah ruangan tempat AI berada, kalau belum digeledah. Ruang Tamu sudah
+               diperiksa polisi (isinya berkas polisi), jadi tidak bisa digeledah.
+               Interogasi tersangka di ruangan yang sama yang belum ditanya.
+               Tuduh hanya kalau KB sudah berisi fakta Terbukti(x, w, r).
+RESULT(s, a) : state setelah aksi a.
+Goal test    : satu informasi baru didapat (target ruangan digeledah atau target tersangka ditanya).
+Biaya        : 1 per aksi.
+Heuristik    : h(n) = d + 1, atau max(0, d - 3) + 1 saat memegang teleport, dengan d jarak
+               Manhattan ke target terdekat. +1 untuk aksi geledah/interogasi. Satu lompatan
+               teleport menempuh jarak Manhattan paling jauh 4 dalam 1 aksi (hemat paling banyak
+               3), jadi h tidak pernah melebihi biaya sebenarnya (admissible).
 
-Isi bukti baru diketahui setelah aksi dijalankan, jadi planner tidak bisa merencanakan
-sampai "tuduh" dari awal. Agen memakai online replanning: rencanakan sampai mendapat
-informasi baru, jalankan satu aksi, amati, perbarui KB, lalu rencanakan ulang.
+Isi ruangan baru diketahui setelah digeledah, jadi AI tidak bisa merencanakan sampai Tuduh
+dari awal. AI memakai online replanning: rencanakan sampai informasi baru berikutnya,
+jalankan aksi pertama, amati, perbarui KB, lalu rencanakan ulang.
 """
 import heapq
-from collections import deque
-from itertools import product
+from collections import deque, namedtuple
+
+from kasus import START, POS, S_IDS, neighbors
+from denah import serong
+
+State = namedtuple('State', 'ruang digeledah ditanya teleport')
+DIPERIKSA_POLISI = START
 
 
-class Schema:
-    def __init__(self, name, params, pre=(), pre_not=(), add=(), dele=(), check=None):
-        self.name, self.params = name, params
-        self.pre, self.pre_not, self.add, self.dele = pre, pre_not, add, dele
-        self.check = check          # syarat tambahan dari penalaran (KB ⊨ ...)
-
-    def show(self):
-        args = ', '.join(v for v, _ in self.params)
-        fmt = lambda fs: ' ∧ '.join(_fmt(f) for f in fs) or '-'
-        pre = fmt(self.pre)
-        if self.pre_not:
-            pre += ' ∧ ' + ' ∧ '.join('¬' + _fmt(f) for f in self.pre_not)
-        lines = [f'Action({self.name}({args})',
-                 f'  PRECOND: {pre}' + (f' ∧ {self.check}' if self.check else ''),
-                 f'  EFFECT:  ' + ' ∧ '.join([_fmt(f) for f in self.add] + ['¬' + _fmt(f) for f in self.dele]) + ')']
-        return '\n'.join(lines)
+def actions(s, lokasi, terbukti=None):
+    """ACTIONS(s). lokasi: {tersangka: ruangan}. terbukti: World dari fakta Terbukti(x, w, r) atau None.
+    A* tidak pernah memberi terbukti: begitu fakta itu ada, agen langsung menuduh tanpa merencanakan."""
+    acts = [('tuduh', terbukti)] if terbukti else []
+    acts += [('pindah', r) for r in neighbors(s.ruang)]
+    if s.teleport:
+        acts += [('teleport', r) for r in serong(s.ruang)]
+    if s.ruang != DIPERIKSA_POLISI and s.ruang not in s.digeledah:
+        acts.append(('geledah', s.ruang))
+    acts += [('interogasi', x) for x in S_IDS if lokasi[x] == s.ruang and x not in s.ditanya]
+    return acts
 
 
-def _fmt(f):
-    return f'{f[0]}({", ".join(f[1:])})'
+def result(s, a):
+    """RESULT(s, a). Tuduh mengakhiri permainan, jadi tidak pernah dikembangkan oleh A*."""
+    jenis, arg = a
+    if jenis == 'pindah':
+        return s._replace(ruang=arg)
+    if jenis == 'teleport':
+        return s._replace(ruang=arg, teleport=False)
+    if jenis == 'geledah':
+        return s._replace(digeledah=s.digeledah | {arg})
+    if jenis == 'interogasi':
+        return s._replace(ditanya=s.ditanya | {arg})
+    raise ValueError(f'aksi {jenis} tidak punya state lanjutan')
 
 
-def _bind(tpl, env):
-    return tuple(env.get(x, x) for x in tpl)
+def manhattan(a, b):
+    (r1, c1), (r2, c2) = POS[a], POS[b]
+    return abs(r1 - r2) + abs(c1 - c2)
 
 
-SCHEMAS = [
-    Schema('Interogasi', [('?x', 'orang'), ('?r', 'ruang')],
-           pre=[('Di', 'AI', '?r'), ('Lokasi', '?x', '?r')], pre_not=[('Ditanya', '?x')],
-           add=[('Ditanya', '?x')]),
-    Schema('Geledah', [('?r', 'ruang')],
-           pre=[('Di', 'AI', '?r'), ('AdaBukti', '?r')], pre_not=[('Digeledah', '?r')],
-           add=[('Digeledah', '?r')]),
-    Schema('Pindah', [('?a', 'ruang'), ('?b', 'ruang')],
-           pre=[('Di', 'AI', '?a'), ('Bersebelahan', '?a', '?b')],
-           add=[('Di', 'AI', '?b')], dele=[('Di', 'AI', '?a')]),
-    Schema('Teleport', [('?a', 'ruang'), ('?b', 'ruang')],
-           pre=[('Di', 'AI', '?a'), ('Punya', 'AI', 'Teleport'), ('Serong', '?a', '?b')],
-           add=[('Di', 'AI', '?b')], dele=[('Di', 'AI', '?a'), ('Punya', 'AI', 'Teleport')]),
-]
-STATIC_PRED = ('Bersebelahan', 'Lokasi', 'AdaBukti', 'Serong')
-# Fakta Terbukti(x, w, r) hanya ditambahkan oleh mesin inferensi ketika
-# KB ⊨ Pelaku(x) ∧ Senjata(w) ∧ TKP(r); jadi prasyarat Tuduh tetap berupa fakta di state.
-TUDUH = Schema('Tuduh', [('?x', 'orang'), ('?w', 'senjata'), ('?r', 'ruang')],
-               pre=[('Terbukti', '?x', '?w', '?r')], add=[('Selesai',)])
+def heuristik(tujuan, goal):
+    """h(n) untuk A*. tujuan: ruangan target (ruangan yang mau digeledah dan ruangan tempat
+    tersangka target berada)."""
+    def h(s):
+        if goal(s):
+            return 0
+        d = min(manhattan(s.ruang, r) for r in tujuan)
+        return max(0, d - 3) + 1 if s.teleport else d + 1
+    return h
 
 
-class Planner:
-    def __init__(self, objects, static):
-        """objects: {tipe: [objek]}, static: himpunan fakta yang tidak pernah berubah."""
-        self.static = frozenset(static)
-        self.ground = []
-        for sch in SCHEMAS:
-            doms = [objects[t] for _, t in sch.params]
-            for combo in product(*doms):
-                env = {v: o for (v, _), o in zip(sch.params, combo)}
-                pre = [_bind(f, env) for f in sch.pre]
-                # buang grounding yang prasyarat statisnya pasti gagal
-                if any(f[0] in STATIC_PRED and f not in self.static for f in pre):
-                    continue
-                self.ground.append((sch.name, combo, pre, [_bind(f, env) for f in sch.pre_not],
-                                    [_bind(f, env) for f in sch.add], [_bind(f, env) for f in sch.dele]))
+def _jejak(parent, s):
+    plan = []
+    while parent[s]:
+        s, a = parent[s]
+        plan.append(a)
+    return plan[::-1]
 
-    def applicable(self, state):
-        for g in self.ground:
-            _, _, pre, pre_not, _, _ = g
-            if all(f in state or f in self.static for f in pre) and not any(f in state for f in pre_not):
-                yield g
 
-    @staticmethod
-    def _jejak(parent, cur):
-        plan = []
-        while parent[cur]:
-            cur, act = parent[cur]
-            plan.append(act)
-        return plan[::-1]
-
-    def astar(self, state, goal, h):
-        """A*: f(n) = g(n) + h(n), setiap aksi berbiaya 1.
-
-        goal(state) -> bool, h(state) -> perkiraan biaya sisa (harus admissible).
-        Mengembalikan (rencana, simpul diekspansi). Tes tujuan dilakukan saat simpul diambil
-        dari antrean, sehingga rencana pertama yang ditemukan adalah yang terpendek.
-        """
-        start = frozenset(state)
-        tie = 0
-        frontier = [(h(start), tie, 0, start)]
-        parent = {start: None}
-        best_g = {start: 0}
-        closed = set()
-        expanded = 0
-        while frontier:
-            _, _, g, s = heapq.heappop(frontier)
-            if s in closed:
-                continue
-            if goal(s):
-                return self._jejak(parent, s), expanded
-            closed.add(s)
-            expanded += 1
-            for name, combo, _, _, add, dele in self.applicable(s):
-                nxt = (s - frozenset(dele)) | frozenset(add)
-                ng = g + 1
-                if nxt in closed or ng >= best_g.get(nxt, float('inf')):
-                    continue
-                best_g[nxt] = ng
-                parent[nxt] = (s, (name, combo))
+def astar(start, goal, h, lokasi):
+    """A*: f(n) = g(n) + h(n). Goal test saat node diambil dari frontier, jadi rencana
+    pertama yang ditemukan adalah yang terpendek. Mengembalikan (rencana, node diekspansi)."""
+    frontier = [(h(start), 0, 0, start)]
+    parent, best_g, tie, expanded = {start: None}, {start: 0}, 0, 0
+    while frontier:
+        _, neg_g, _, s = heapq.heappop(frontier)
+        g = -neg_g
+        if g > best_g[s]:
+            continue
+        if goal(s):
+            return _jejak(parent, s), expanded
+        expanded += 1
+        for a in actions(s, lokasi):
+            t = result(s, a)
+            if t not in best_g or g + 1 < best_g[t]:
+                best_g[t], parent[t] = g + 1, (s, a)
                 tie += 1
-                heapq.heappush(frontier, (ng + h(nxt), tie, ng, nxt))
-        return None, expanded
+                heapq.heappush(frontier, (g + 1 + h(t), -(g + 1), tie, t))
+    return None, expanded
 
-    def plan(self, state, goal):
-        """BFS dari state sampai goal(state) benar. Mengembalikan (rencana, simpul diekspansi)."""
-        start = frozenset(state)
-        if goal(start):
-            return [], 1
-        frontier = deque([start])
-        parent = {start: None}
-        expanded = 0
-        while frontier:
-            s = frontier.popleft()
-            expanded += 1
-            for g in self.applicable(s):
-                name, combo, _, _, add, dele = g
-                nxt = (s - frozenset(dele)) | frozenset(add)
-                if nxt in parent:
-                    continue
-                parent[nxt] = (s, (name, combo))
-                if goal(nxt):
-                    return self._jejak(parent, nxt), expanded
-                frontier.append(nxt)
-        return None, expanded
+
+def bfs(start, goal, lokasi):
+    """Pembanding untuk A* (uji_planning.py): breadth-first search dengan aksi yang sama."""
+    if goal(start):
+        return [], 0
+    parent, q, expanded = {start: None}, deque([start]), 0
+    while q:
+        s = q.popleft()
+        expanded += 1
+        for a in actions(s, lokasi):
+            t = result(s, a)
+            if t in parent:
+                continue
+            parent[t] = (s, a)
+            if goal(t):
+                return _jejak(parent, t), expanded
+            q.append(t)
+    return None, expanded
+
+
+def tampil_formulasi():
+    """Teks problem formulation untuk lampiran laporan (simulasi.py)."""
+    return '\n'.join([
+        'State      : (ruangan AI, ruangan sudah digeledah, tersangka sudah ditanya, memegang teleport)',
+        'ACTIONS(s) : Pindah(r)      r bersebelahan dengan ruangan AI',
+        '             Teleport(r)    r serong 1-2 kotak, hanya kalau memegang teleport',
+        '             Geledah(r)     r = ruangan AI, belum digeledah, bukan Ruang Tamu (sudah diperiksa polisi)',
+        '             Interogasi(x)  x di ruangan AI dan belum ditanya',
+        '             Tuduh(x,w,r)   hanya kalau KB berisi Terbukti(x, w, r)',
+        'RESULT     : Pindah/Teleport mengganti ruangan AI (Teleport juga melepas teleport);',
+        '             Geledah/Interogasi menambah ruangan/tersangka ke himpunan yang sudah diperiksa',
+        'Goal test  : satu informasi baru didapat dari target yang topiknya belum terbukti',
+        'Biaya      : 1 per aksi',
+        'Heuristik  : h = d + 1, atau max(0, d - 3) + 1 saat memegang teleport (d = jarak Manhattan)',
+    ])

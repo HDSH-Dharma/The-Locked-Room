@@ -7,16 +7,19 @@ Inferensi    : universal instantiation -> reduksi ke proposisional -> CNF -> res
                KB ⊨ α dibuktikan dengan menurunkan klausa kosong dari KB ∧ ¬α.
 Relevansi    : bukti tidak relevan jika predikatnya tidak dipakai aturan mana pun
                (misalnya motif), atau sudah tersirat dari aturan (KB_aturan ⊨ bukti).
-Gerak        : skema aksi (PRECOND/EFFECT) yang mendefinisikan ACTIONS(s) dan RESULT(s, a).
-Tuduh        : prasyaratnya fakta Terbukti(x, w, r), yang hanya di-TELL ke KB ketika
-               KB ⊨ Pelaku(x) ∧ Senjata(w) ∧ TKP(r).
+Gerak        : problem formulation ACTIONS(s), RESULT(s, a), goal test (planning.py) dan A*
+               ke ruangan belum digeledah atau tersangka belum ditanya yang terdekat. Isi ruangan
+               tidak diketahui sebelum digeledah, jadi semua ruangan yang belum digeledah adalah
+               target, kecuali yang topik hasil mengupingnya sudah terbukti semua.
+Tuduh        : hanya ada di ACTIONS(s) kalau KB berisi fakta Terbukti(x, w, r), yang hanya
+               di-TELL ketika KB ⊨ Pelaku(x) ∧ Senjata(w) ∧ TKP(r).
 """
 import time
 from fol import (Atom, Not, And, Or, Imp, Iff, ForAll, Exists, Neq, instantiate, to_cnf, show, atom_str)
-from kasus import S_IDS, W_IDS, TKP, R_IDS, C, DOMAIN, World, neighbors
+from kasus import S_IDS, W_IDS, TKP, R_IDS, C, DOMAIN, World
 from resolusi import Prover
-from planning import Planner, SCHEMAS, TUDUH
-from denah import serong, nilai_target
+from planning import State, DIPERIKSA_POLISI, astar, heuristik
+from denah import nilai_target
 
 x, y, w, r = '?x', '?y', '?w', '?r'
 P = lambda a: Atom('Pelaku', a)
@@ -92,6 +95,7 @@ for _, _, _f in ATURAN:
     _predicates(_f, RULE_PREDICATES)
 
 # Atom yang ditanyakan untuk menentukan jawaban
+QUERY_LABEL = {'s': 'Pelaku', 'w': 'Senjata', 'r': 'TKP'}
 QUERY_ATOMS = [('s', i, atom_str('Pelaku', (C[i],))) for i in S_IDS] \
     + [('w', i, atom_str('Senjata', (C[i],))) for i in W_IDS] \
     + [('r', i, atom_str('TKP', (C[i],))) for i in TKP]
@@ -145,7 +149,7 @@ class KB:
 
 
 class AgenV2:
-    nama = 'v2 (FOL + resolusi + planning)'
+    nama = 'v2 (FOL + resolusi + A*)'
 
     def __init__(self, pure=True, limit=60000):
         self.pure, self.limit = pure, limit
@@ -158,12 +162,6 @@ class AgenV2:
         self.stats = dict(update=0, waktu_ms=0.0, query=0, langkah_resolusi=0, langkah_max=0, batas=0,
                           simpul_planner=0, rencana=0)
         self.log = []
-        objects = {'ruang': R_IDS, 'orang': S_IDS}
-        static = {('Bersebelahan', a, b) for a in R_IDS for b in neighbors(a)}
-        static |= {('AdaBukti', rr) for rr in R_IDS if case['room_clues'][rr]}
-        static |= {('Lokasi', s, case['loc'][s]) for s in S_IDS}
-        static |= {('Serong', a, b) for a in R_IDS for b in serong(a)}
-        self.planner = Planner(objects, static)
         self.topik = {}           # hasil menguping: ('r', ruangan) / ('s', tersangka) -> [topik]
         self.terbukti = None      # World yang sudah terbukti; diisi saat fakta Terbukti di-TELL
         self.stats.update(teleport_ditahan=0)
@@ -256,7 +254,7 @@ class AgenV2:
 
     def _cek_terbukti(self):
         """Kalau KB ⊨ Pelaku(x) ∧ Senjata(w) ∧ TKP(r), TELL fakta Terbukti(x, w, r).
-        Fakta ini prasyarat skema Tuduh, jadi AI tidak bisa menuduh tanpa bukti."""
+        Tuduh hanya ada di ACTIONS(s) kalau fakta ini ada, jadi AI tidak bisa menuduh tanpa bukti."""
         if self.terbukti:
             return
         pasti = {cat: v for (cat, v), st in self.state.items() if st == 'pasti'}
@@ -274,29 +272,65 @@ class AgenV2:
         ok, p, empty = self.kb.ask((atom, positif))
         return p.proof(empty) if ok else []
 
+    # ---- penjelasan untuk UI ----
+    def trace_teks(self):
+        """Reasoning trace dalam bentuk baris teks: setiap bukti yang di-TELL, penilaian
+        berguna/tidak, kesimpulan baru dari ASK, lalu langkah resolusi untuk jawaban akhir."""
+        nama = {'s': self._nama, 'w': lambda i: C[i], 'r': self._ruang}
+        teks_st = {'pasti': 'pasti', 'gugur': 'bukan'}
+        kat = {'s': 'pelaku', 'w': 'senjata', 'r': 'TKP'}
+        lines = []
+        for e in self.log:
+            clue = self.case['by_id'][e['id']]
+            tanda = 'berguna' if e['relevan'] else f"tidak berguna: {e['alasan']}"
+            lines.append(f"[{e['id']}] {clue['text']}")
+            lines.append(f"     TELL {'; '.join(e['fol'])}   ({tanda})")
+            baru = ', '.join(f'{kat[c]} {teks_st[st]} {nama[c](v)}' for (c, v), st in e['baru'])
+            lines.append(f"     ASK  {e['query']} query, {e['langkah']} langkah resolusi -> {baru or 'belum ada kesimpulan baru'}")
+        if self.terbukti:
+            t = self.terbukti
+            lines.append('')
+            lines.append(f'TELL Terbukti({C[t.s]}, {C[t.w]}, {C[t.r]})  ->  aksi Tuduh tersedia')
+            for cat, v in (('s', t.s), ('w', t.w), ('r', t.r)):
+                lines.append(f'Bukti resolusi KB ⊨ {QUERY_LABEL[cat]}({C[v]}):')
+                for i, (a, b, hasil) in enumerate(self.bukti(cat, v), 1):
+                    lines.append(f'  {i:>2}. {a}  +  {b}  =>  {hasil or "□ (klausa kosong)"}')
+        return lines
+
     # ---- planning ----
     def tuduhan(self):
-        """Aksi Tuduh hanya bisa dipilih kalau fakta Terbukti(x, w, r) sudah ada di KB."""
+        """Tuduh(x, w, r) hanya ada di ACTIONS(s) kalau fakta Terbukti(x, w, r) sudah ada di KB."""
         return self.terbukti
 
-    HEMAT_MIN_TELEPORT = 1
+    def target(self, searched, asked):
+        """Ruangan dan tersangka yang layak dituju. Isi ruangan tidak diketahui sebelum
+        digeledah, jadi semua ruangan yang belum digeledah ikut, kecuali Ruang Tamu (sudah
+        diperiksa polisi) dan target yang topik hasil mengupingnya sudah terbukti."""
+        terbuka = self.terbuka()
+        rooms = {rr for rr in R_IDS if rr not in searched and rr != DIPERIKSA_POLISI
+                 and nilai_target(self.topik, ('r', rr), 1, terbuka)}
+        sus = {s for s in S_IDS if s not in asked and nilai_target(self.topik, ('s', s), 1, terbuka)}
+        return rooms, sus
 
     def aksi(self, pos, searched, asked, punya_tp=False):
-        state = {('Di', 'AI', pos)} | {('Digeledah', rr) for rr in searched} | {('Ditanya', s) for s in asked}
-        terbuka = self.terbuka()
-        targets = {('Digeledah', rr) for rr in R_IDS if self.case['room_clues'][rr] and rr not in searched
-                   and nilai_target(self.topik, ('r', rr), 1, terbuka)} \
-            | {('Ditanya', s) for s in S_IDS if s not in asked and nilai_target(self.topik, ('s', s), 1, terbuka)}
-        if not targets:
+        rooms, sus = self.target(searched, asked)
+        if not rooms and not sus:
             return None, {}
-        goal = lambda st: bool(targets & st)          # tujuan: mendapat satu informasi baru
-        plan, expanded = self.planner.plan(state, goal)
+        lokasi = self.case['loc']
+        searched0, asked0 = frozenset(searched), frozenset(asked)
+
+        def goal(st):          # goal test: satu informasi baru didapat
+            return bool((st.digeledah - searched0) & rooms) or bool((st.ditanya - asked0) & sus)
+
+        h = heuristik(list(rooms) + [lokasi[s] for s in sus], goal)
+        start = State(pos, searched0, asked0, False)
+        plan, expanded = astar(start, goal, h, lokasi)
         if punya_tp:
             # Rencana dengan teleport hanya dipakai kalau lebih pendek; selain itu teleport disimpan.
-            plan_tp, exp_tp = self.planner.plan(state | {('Punya', 'AI', 'Teleport')}, goal)
+            plan_tp, exp_tp = astar(start._replace(teleport=True), goal, h, lokasi)
             expanded += exp_tp
-            if plan_tp and plan_tp[0][0] == 'Teleport':
-                if plan is None or len(plan_tp) <= len(plan) - self.HEMAT_MIN_TELEPORT:
+            if plan_tp and plan_tp[0][0] == 'teleport':
+                if plan is None or len(plan_tp) < len(plan):
                     plan = plan_tp
                 else:
                     self.stats['teleport_ditahan'] += 1
@@ -304,15 +338,9 @@ class AgenV2:
         self.stats['rencana'] += 1
         if not plan:
             return None, {}
-        name, combo = plan[0]
-        info = dict(rencana=[f'{n}({", ".join(c)})' for n, c in plan], simpul=expanded)
-        if name == 'Pindah':
-            return ('pindah', combo[1]), info
-        if name == 'Teleport':
-            return ('teleport', combo[1]), info
-        if name == 'Geledah':
-            return ('geledah', combo[0]), info
-        return ('interogasi', combo[0]), info
+        info = dict(rencana=[f'{a.capitalize()}({self._ruang(b) if a in ("pindah", "teleport", "geledah") else self._nama(b)})'
+                             for a, b in plan], simpul=expanded)
+        return plan[0], info
 
 
 def tampil_aturan():
@@ -320,7 +348,3 @@ def tampil_aturan():
     for name, ket, f in ATURAN:
         lines.append(f'{name}  {show(f)}    # {ket}')
     return '\n'.join(lines)
-
-
-def tampil_skema():
-    return '\n'.join(s.show() for s in SCHEMAS + [TUDUH])
