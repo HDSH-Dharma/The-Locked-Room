@@ -10,7 +10,7 @@ from agen_v2 import AgenV2
 from denah import pakai_denah
 
 
-def main(n_kasus=200, seed_awal=1, denah='9', diam=False):
+def main(n_kasus=300, seed_awal=1, denah='9', diam=False):
     pakai_denah(denah)
     rng = random.Random(2026)
     cek = beda = beda_rel = batas = 0
@@ -38,4 +38,4 @@ def main(n_kasus=200, seed_awal=1, denah='9', diam=False):
 
 
 if __name__ == '__main__':
-    main(int(sys.argv[1]) if len(sys.argv) > 1 else 200, denah=sys.argv[2] if len(sys.argv) > 2 else '9')
+    main(int(sys.argv[1]) if len(sys.argv) > 1 else 300, denah=sys.argv[2] if len(sys.argv) > 2 else '9')
