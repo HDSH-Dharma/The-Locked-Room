@@ -8,15 +8,14 @@ Hasil ditulis ke folder hasil/:
   transkrip_kasus_<nomor>.md  jalannya satu permainan, termasuk isi KB dan bukti resolusi
   perbandingan.md             angka perbandingan v1 vs v2 vs baseline
 """
+import json
 import os
-import random
 import statistics as st
 import sys
 import time
 from collections import Counter
 
-from kasus import generate_case, MAX_ROUNDS, S_IDS, W_IDS, TKP, sn, wn, rn
-from fol import clause_str
+from kasus import generate_case, TKP, sn, wn, rn
 from agen_v1 import AgenV1
 from agen_v2 import AgenV2, KB, ATURAN, tampil_aturan, QUERY_ATOMS
 from planning import tampil_formulasi
@@ -275,7 +274,6 @@ def main(n=300):
     L += ['\n## Lampiran: aturan FOL v2\n', '```', tampil_aturan(), '```',
           '\n## Lampiran: problem formulation dan A* v2\n', '```', tampil_formulasi(), '```',
           f'\nWaktu total simulasi: {time.perf_counter() - t0:.0f} detik.']
-    import json
     with open(os.path.join(OUT, 'angka.json'), 'w', encoding='utf-8') as f:
         json.dump(dict(v1=r1, v2=r2, penebak=rp, tim_v1=t1, tim_v2=t2, tim_nekat_v2=t2b, polisi_pelaku=pol_pelaku,
                        polisi_tkp=pol_tkp, konsistensi=dict(cek=cek, beda=beda, beda_relevansi=beda_rel, batas=batas),

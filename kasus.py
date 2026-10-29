@@ -211,12 +211,12 @@ def _try_build(rnd):
         'taman': 'Tanah taman becek, tapi tidak ada satu pun jejak kaki.',
     }
     for t in TKP:
-        if t != sol.r and t != found:
+        if t not in (sol.r, found):
             pool.append(phys(room_flavor[t], t, lambda m, t=t: m.r != t, [Atom('Kosong', C[t])]))
     if moved:
         pool.append(phys('Lebam mayat tidak sesuai dengan posisi jasad. Korban dipindahkan setelah meninggal.', found,
                          lambda m: m.r != found, [Atom('LebamTidakSesuai')]))
-        decoy = pick(rnd, [t for t in TKP if t != found and t != sol.r])
+        decoy = pick(rnd, [t for t in TKP if t not in (found, sol.r)])
         trail = shuffle(rnd, [sol.r, decoy])
         pool.append(phys(f'Ada bekas seretan menuju {f_low} dari arah {rn(trail[0]).lower()} atau {rn(trail[1]).lower()}.', found,
                          lambda m, tr=tuple(trail): m.r in tr, [Atom('AdaSeretan')] + only('AsalSeretan', trail, TKP)))
@@ -243,7 +243,7 @@ def _try_build(rnd):
         pool.append(phys(pick(rnd, alibi_texts)(sn(y)), None, lambda m, y=y: m.s != y, [Atom('AdaAlibi', C[y])]))
     a, b = shuffle(rnd, innocents)[:2]
     pool.append(phys(f'Foto di ponsel yang tertinggal: {sn(a)} dan {sn(b)} bermain catur bersama pukul 21.00–23.00.', 'rmakan',
-                     lambda m, a=a, b=b: m.s != a and m.s != b, [Atom('AdaAlibi', C[a]), Atom('AdaAlibi', C[b])]))
+                     lambda m, a=a, b=b: m.s not in (a, b), [Atom('AdaAlibi', C[a]), Atom('AdaAlibi', C[b])]))
     fp = shuffle(rnd, [sol.s, pick(rnd, innocents)])
     pool.append(phys(f'Jejak sepatu ukuran 43 di dekat TKP. Hanya {sn(fp[0])} dan {sn(fp[1])} yang memakai ukuran itu.', None,
                      lambda m, fp=tuple(fp): m.s in fp, [Atom('JejakSepatu43')] + only('Ukuran43', fp, S_IDS)))
