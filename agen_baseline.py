@@ -7,6 +7,8 @@ Agen pembanding (baseline) dan tim simulasi.
                     (menebak salah satunya). Lebih cepat, tapi bisa salah tangkap.
 - TimBot          : pengganti tim manusia 3 orang. Tiga detektif berbagi catatan dan memakai
                     "bantuan logika" (model checking). Menuduh jika sisa kemungkinan <= ambang.
+                    Tidak mengintip isi ruangan: semua ruangan yang belum digeledah (kecuali
+                    Ruang Tamu, sudah diperiksa polisi) adalah target, sama seperti pemain manusia.
 - TimLambat       : TimBot yang baru memahami arti bukti satu ronde kemudian (butuh waktu
                     diskusi). Perkiraan kasar untuk tim manusia tanpa bantuan logika.
 - AIDiam          : lawan kosong, untuk mengukur apakah tim bisa selesai dalam 7 ronde.
@@ -75,7 +77,7 @@ class TimBot:
             terbuka = self.terbuka()
             cands = []
             for r in R_IDS:
-                if self.case['room_clues'][r] and r not in game.tim_searched \
+                if r != START and r not in game.tim_searched \
                         and nilai_target(self.topik, ('r', r), 1, terbuka):
                     cands.append((('geledah', r), r))
             for s in S_IDS:

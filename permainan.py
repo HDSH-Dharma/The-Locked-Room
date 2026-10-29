@@ -4,6 +4,9 @@ Aturan permainan Rumah Terkunci untuk simulasi.
 Satu ronde:
 1. Tim: detektif 1, 2, 3 masing-masing 1 aksi (pindah / geledah / interogasi / teleport).
    Boleh menuduh kapan saja di giliran tim.
+   Geledah: semua ruangan yang belum digeledah boleh digeledah, isinya baru diketahui
+   setelah digeledah (ruangan kosong tidak memberi bukti). Ruang Tamu sudah diperiksa polisi,
+   jadi tidak bisa digeledah. Aturan ini sama untuk tim dan AI.
 2. Detektif AI: jumlah aksi sesuai pola level. Menuduh hanya kalau prasyarat terpenuhi.
 Setelah ronde 7: sidang. Tim boleh menuduh sekali lagi; kalau tidak, hasilnya seri
 (hakim memvonis orang yang ditangkap polisi).
@@ -111,7 +114,7 @@ class Permainan:
             self.tp_holder = 'terpakai'
             self.stat['tp_dipakai_tim'] += 1
         elif kind == 'geledah':
-            assert arg == pos and arg not in self.tim_searched and self.case['room_clues'][arg]
+            assert arg == pos and arg != START and arg not in self.tim_searched
             self.tim_searched.add(arg)
             found = list(self.case['room_clues'][arg])
             self._ambil_teleport(arg, ('tim', d))
@@ -194,7 +197,7 @@ class Permainan:
         acts = [('pindah', nb) for nb in neighbors(pos)]
         if self.tp_holder == ('tim', d):
             acts += [('teleport', x) for x in serong(pos)]
-        if self.case['room_clues'][pos] and pos not in self.tim_searched:
+        if pos != START and pos not in self.tim_searched:      # Ruang Tamu sudah diperiksa polisi
             acts.append(('geledah', pos))
         acts += [('interogasi', s) for s in S_IDS if self.case['loc'][s] == pos and s not in self.tim_asked]
         return acts
@@ -295,6 +298,7 @@ class Permainan:
             self.stat['tp_dipakai_ai'] += 1
             return
         if kind == 'geledah':
+            assert arg == self.ai_pos and arg != START and arg not in self.ai_searched
             self.ai_searched.add(arg)
             ids = self.case['room_clues'][arg]
             self._ambil_teleport(arg, 'ai')
