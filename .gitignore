@@ -10,6 +10,9 @@ venv/
 .idea/
 .DS_Store
 
+# Practice games in normal mode (only test-mode logs are used for evaluation)
+logs/latihan/
+
 # Generated simulation output (evaluation tables are committed explicitly)
 hasil/*.json
 !hasil/.gitkeep

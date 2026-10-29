@@ -244,6 +244,18 @@ class Permainan:
             self.tuduh('tim', World(*jawaban))
         return self.hasil
 
+    def hasil_akhir(self):
+        """Hasil melawan AI. Mode normal: sama dengan self.hasil. Test mode: hasil kalau tuduhan AI
+        tidak disembunyikan, yaitu siapa yang menuduh lebih dulu; sama dengan replay melawan AI yang sama.
+        Tim jalan lebih dulu di setiap ronde, dan sidang terjadi setelah giliran AI di ronde 7."""
+        t = self.tuduhan_ai
+        if not self.uji or not self.hasil or not t:
+            return self.hasil
+        ronde_tim = MAX_ROUNDS + 1 if self.sidang_dibuka else self.hasil['ronde']
+        if t['ronde'] < ronde_tim:
+            return dict(tipe='ai' if t['benar'] else 'ai-salah', tebakan=t['tebakan'], ronde=t['ronde'])
+        return self.hasil
+
     def ke_log(self, pemain, ai_live, durasi_detik, tanda_bukti=True):
         """Isi file log JSON untuk replay (format hasil rapat, ditambah mode, tanda_bukti, sidang)."""
         tuduhan = next((dict(ronde=r, jawaban=list(data['guess']), sidang=self.sidang_dibuka)
@@ -252,7 +264,7 @@ class Permainan:
                     mode='uji' if self.uji else 'normal', tanda_bukti=tanda_bukti,
                     aksi_tim=[[r, data['d'], list(data['act'])]
                               for r, siapa, jenis, data in self.events if siapa == 'tim' and jenis == 'aksi'],
-                    tuduhan_tim=tuduhan, hasil=self.hasil['tipe'] if self.hasil else None)
+                    tuduhan_tim=tuduhan, hasil=self.hasil_akhir()['tipe'] if self.hasil else None)
 
     def _ai_coba_tuduh(self):
         g = self.ai.tuduhan()

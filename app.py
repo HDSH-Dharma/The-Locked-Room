@@ -6,7 +6,8 @@ UI Streamlit Rumah Terkunci: tim 3 detektif melawan Detektif AI.
 - Mode normal : aksi AI ditampilkan satu per satu (animasi), tuduhan AI langsung mengakhiri game.
 - Test mode   : AI langsung jalan tanpa animasi, tuduhan AI disembunyikan, dan game lanjut
                 sampai tim menuduh atau sidang setelah ronde 7.
-Setiap game yang selesai disimpan ke logs/<inisial>_<seed>.json untuk replay.
+Setiap game test mode yang selesai disimpan ke logs/<inisial>_<seed>.json untuk replay.
+Game mode normal adalah latihan; lognya disimpan ke logs/latihan/ yang tidak masuk git.
 """
 import json
 import os
@@ -34,6 +35,11 @@ HASIL_TEKS = {
     'ai': ('error', 'Detektif AI menuduh lebih dulu dan benar. AI menang.'),
     'ai-salah': ('success', 'Detektif AI salah tuduh. Tim menang.'),
     'vonis': ('warning', 'Tim tidak menuduh. Hakim memvonis orang yang ditangkap polisi. Hasil seri.'),
+}
+TUDUHAN_TIM_TEKS = {
+    'tim': 'Tuduhan kalian benar.',
+    'tim-salah': 'Tuduhan kalian salah.',
+    'vonis': 'Kalian tidak menuduh sampai sidang.',
 }
 
 CSS = """
@@ -79,12 +85,13 @@ def game_baru(pemain, seed, ai_live, uji, tanda):
 
 def simpan_log(g):
     ss = st.session_state
-    os.makedirs(LOGS, exist_ok=True)
+    folder = LOGS if g.uji else os.path.join(LOGS, 'latihan')
+    os.makedirs(folder, exist_ok=True)
     data = g.ke_log(ss.pemain, ss.ai_live, ss.t_selesai - ss.t_mulai, ss.tanda)
     base = f'{ss.pemain}_{g.case["seed"]}'
-    path, i = os.path.join(LOGS, base + '.json'), 2
+    path, i = os.path.join(folder, base + '.json'), 2
     while os.path.exists(path):          # jangan menimpa log lama dengan kasus yang sama
-        path, i = os.path.join(LOGS, f'{base}_{i}.json'), i + 1
+        path, i = os.path.join(folder, f'{base}_{i}.json'), i + 1
     with open(path, 'w', encoding='utf-8') as f:
         json.dump(data, f, ensure_ascii=False, indent=1)
     return path
@@ -300,18 +307,20 @@ def layar_selesai(g):
     if ss.t_selesai is None:
         ss.t_selesai = time.time()
         ss.log_path = simpan_log(g)
-    jenis, teks = HASIL_TEKS[g.hasil['tipe']]
-    getattr(st, jenis)(teks)
-    if g.hasil['tebakan']:
-        st.markdown(f'Tuduhan: **{teks_jawaban(g.hasil["tebakan"])}** di ronde {g.hasil["ronde"]}')
-    st.markdown(f'Jawaban sebenarnya: **{teks_jawaban(g.case["sol"])}**')
     if g.uji:
+        # Hasil di layar test mode baru final setelah dibandingkan dengan tuduhan AI yang disembunyikan.
+        st.info(TUDUHAN_TIM_TEKS[g.hasil['tipe']])
         if g.tuduhan_ai:
             t = g.tuduhan_ai
-            st.markdown(f'Detektif AI ({ss.ai_live}) diam-diam sudah menemukan jawaban di ronde {t["ronde"]}: '
+            st.markdown(f'Detektif AI ({ss.ai_live}) diam-diam sudah menuduh di ronde {t["ronde"]}: '
                         f'**{teks_jawaban(t["tebakan"])}**')
         else:
             st.markdown(f'Detektif AI ({ss.ai_live}) belum menemukan jawaban sampai sidang.')
+    jenis, teks = HASIL_TEKS[g.hasil_akhir()['tipe']]
+    getattr(st, jenis)(f'Hasil melawan AI: {teks}' if g.uji else teks)
+    if g.hasil['tebakan']:
+        st.markdown(f'Tuduhan tim: **{teks_jawaban(g.hasil["tebakan"])}** di ronde {g.hasil["ronde"]}')
+    st.markdown(f'Jawaban sebenarnya: **{teks_jawaban(g.case["sol"])}**')
     menit, detik = divmod(int(ss.t_selesai - ss.t_mulai), 60)
     st.caption(f'Durasi {menit} menit {detik} detik · log tersimpan di {os.path.relpath(ss.log_path)}')
     with st.expander('Reasoning trace Detektif AI', expanded=True):
