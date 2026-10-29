@@ -2,7 +2,7 @@
 Uji A* pada gerak Detektif AI v2.
 
 Setiap kali v2 merencanakan dalam permainan sungguhan (melawan tim bot, dengan teleport dan
-menguping), rencana A* dibandingkan dengan BFS pada state dan goal test yang sama:
+menguping), A* dibandingkan dengan BFS pada state awal dan goal test yang sama:
 - panjang rencana harus sama (A* dengan heuristik admissible selalu optimal),
 - h(n) tidak boleh melebihi sisa biaya sebenarnya di setiap state pada rencana terpendek,
 - jumlah node yang diekspansi A* dibandingkan dengan BFS.
@@ -12,40 +12,53 @@ menguping), rencana A* dibandingkan dengan BFS pada state dan goal test yang sam
 import sys
 from collections import Counter
 
-import agen_v2
-import planning
 from agen_baseline import TimLambat
+from agen_v2 import AgenV2
 from permainan import Permainan
+from planning import State, astar, bfs, goal_info_baru, heuristik, result
 
-catat = Counter()
 
-
-def astar_banding(start, goal, h, lokasi):
-    plan, n = planning.astar(start, goal, h, lokasi)
-    plan_bfs, n_bfs = planning.bfs(start, goal, lokasi)
+def bandingkan(start, goal, h, lokasi, catat):
+    plan, n = astar(start, goal, h, lokasi)
+    plan_bfs, n_bfs = bfs(start, goal, lokasi)
     catat['rencana'] += 1
     catat['node_astar'] += n
     catat['node_bfs'] += n_bfs
     if (plan is None) != (plan_bfs is None) or (plan is not None and len(plan) != len(plan_bfs)):
         catat['beda_panjang'] += 1
-    if plan_bfs is not None:
-        s, sisa = start, len(plan_bfs)
-        for a in [None] + plan_bfs:
-            if a is not None:
-                s, sisa = planning.result(s, a), sisa - 1
-            catat['h_dicek'] += 1
-            if h(s) > sisa:
-                catat['h_melebihi'] += 1
-    return plan, n
+    if plan_bfs is None:
+        return
+    s, sisa = start, len(plan_bfs)
+    for a in [None] + plan_bfs:
+        if a is not None:
+            s, sisa = result(s, a), sisa - 1
+        catat['h_dicek'] += 1
+        catat['h_melebihi'] += h(s) > sisa
+
+
+class AgenV2Banding(AgenV2):
+    """v2 biasa, tapi setiap kali merencanakan, A* dan BFS dijalankan pada masalah yang sama."""
+
+    def __init__(self, catat):
+        super().__init__()
+        self.catat = catat
+
+    def aksi(self, pos, searched, asked, punya_tp=False):
+        rooms, sus = self.target(searched, asked)
+        if rooms or sus:
+            lokasi = self.case['loc']
+            goal = goal_info_baru(searched, asked, rooms, sus)
+            h = heuristik(list(rooms) + [lokasi[x] for x in sus], goal)
+            start = State(pos, frozenset(searched), frozenset(asked), False)
+            for tp in ((False, True) if punya_tp else (False,)):
+                bandingkan(start._replace(teleport=tp), goal, h, lokasi, self.catat)
+        return super().aksi(pos, searched, asked, punya_tp)
 
 
 def main(n_kasus=300):
-    agen_v2.astar = astar_banding
-    try:
-        for seed in range(1, n_kasus + 1):
-            Permainan(seed, agen_v2.AgenV2(), TimLambat(), teleport=True, menguping=True).jalan()
-    finally:
-        agen_v2.astar = planning.astar
+    catat = Counter()
+    for seed in range(1, n_kasus + 1):
+        Permainan(seed, AgenV2Banding(catat), TimLambat(), teleport=True, menguping=True).jalan()
     hemat = 100 * (1 - catat['node_astar'] / max(catat['node_bfs'], 1))
     print(f'{n_kasus} kasus, {catat["rencana"]} rencana: panjang A* beda dengan BFS {catat["beda_panjang"]}, '
           f'h melebihi biaya sebenarnya {catat["h_melebihi"]} dari {catat["h_dicek"]} state, '

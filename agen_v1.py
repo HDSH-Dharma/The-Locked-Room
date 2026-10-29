@@ -12,8 +12,8 @@ Gerak        : BFS (pencarian buta) ke ruangan belum digeledah atau tersangka be
                topik hasil mengupingnya sudah terbukti.
 """
 import time
-from kasus import ALL_WORLDS, S_IDS, W_IDS, TKP, R_IDS, sn, rn
-from planning import State, DIPERIKSA_POLISI, bfs
+from kasus import ALL_WORLDS, S_IDS, W_IDS, TKP, R_IDS
+from planning import DIPERIKSA_POLISI, rencanakan, teks_rencana
 
 
 def possible(models):
@@ -83,23 +83,10 @@ class AgenV1:
         sus = {x for x in S_IDS if x not in asked}
         if not rooms and not sus:
             return None, {}
-        lokasi = self.case['loc']
-        searched0, asked0 = frozenset(searched), frozenset(asked)
-
-        def goal(st):          # goal test: satu informasi baru didapat
-            return bool((st.digeledah - searched0) & rooms) or bool((st.ditanya - asked0) & sus)
-
-        start = State(pos, searched0, asked0, False)
-        plan, expanded = bfs(start, goal, lokasi)
-        if punya_tp:
-            plan_tp, exp_tp = bfs(start._replace(teleport=True), goal, lokasi)
-            expanded += exp_tp
-            if plan_tp and plan_tp[0][0] == 'teleport' and (plan is None or len(plan_tp) < len(plan)):
-                plan = plan_tp
+        plan, expanded, _ = rencanakan(pos, searched, asked, (rooms, sus), self.case['loc'],
+                                       punya_tp=punya_tp, algoritma='bfs')
         self.stats['simpul_planner'] += expanded
         self.stats['rencana'] += 1
         if not plan:
             return None, {}
-        info = dict(rencana=[f'{a.capitalize()}({sn(b) if a == "interogasi" else rn(b)})' for a, b in plan],
-                    simpul=expanded)
-        return plan[0], info
+        return plan[0], dict(rencana=teks_rencana(plan), simpul=expanded)

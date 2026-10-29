@@ -25,7 +25,7 @@ jalankan aksi pertama, amati, perbarui KB, lalu rencanakan ulang.
 import heapq
 from collections import deque, namedtuple
 
-from kasus import START, POS, S_IDS, neighbors
+from kasus import START, POS, S_IDS, neighbors, sn, rn
 from denah import serong
 
 State = namedtuple('State', 'ruang digeledah ditanya teleport')
@@ -122,6 +122,48 @@ def bfs(start, goal, lokasi):
                 return _jejak(parent, t), expanded
             q.append(t)
     return None, expanded
+
+
+def goal_info_baru(searched, asked, rooms, sus):
+    """Goal test: satu informasi baru didapat, yaitu salah satu ruangan target sudah
+    digeledah atau salah satu tersangka target sudah ditanya."""
+    searched0, asked0 = frozenset(searched), frozenset(asked)
+
+    def goal(s):
+        return bool((s.digeledah - searched0) & rooms) or bool((s.ditanya - asked0) & sus)
+    return goal
+
+
+def rencanakan(pos, searched, asked, target, lokasi, *, punya_tp=False, algoritma='astar'):
+    """Rencana terpendek dari posisi AI ke informasi baru berikutnya (dipakai v1 dan v2).
+
+    target : (ruangan target, tersangka target). algoritma: 'astar' (v2) atau 'bfs' (v1).
+    Teleport hanya dipakai kalau rencana dengan teleport lebih pendek; selain itu disimpan.
+    Mengembalikan (rencana, node diekspansi, teleport_ditahan)."""
+    rooms, sus = target
+    goal = goal_info_baru(searched, asked, rooms, sus)
+    h = heuristik(list(rooms) + [lokasi[x] for x in sus], goal)
+
+    def cari(s):
+        return astar(s, goal, h, lokasi) if algoritma == 'astar' else bfs(s, goal, lokasi)
+
+    start = State(pos, frozenset(searched), frozenset(asked), False)
+    plan, expanded = cari(start)
+    ditahan = False
+    if punya_tp:
+        plan_tp, exp_tp = cari(start._replace(teleport=True))
+        expanded += exp_tp
+        if plan_tp and plan_tp[0][0] == 'teleport':
+            if plan is None or len(plan_tp) < len(plan):
+                plan = plan_tp
+            else:
+                ditahan = True
+    return plan, expanded, ditahan
+
+
+def teks_rencana(plan):
+    """Rencana sebagai teks untuk trace, misalnya ['Pindah(Dapur)', 'Geledah(Dapur)']."""
+    return [f'{a.capitalize()}({sn(b) if a == "interogasi" else rn(b)})' for a, b in plan]
 
 
 def tampil_formulasi():

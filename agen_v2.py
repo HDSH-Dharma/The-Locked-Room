@@ -15,10 +15,10 @@ Tuduh        : hanya ada di ACTIONS(s) kalau KB berisi fakta Terbukti(x, w, r), 
                di-TELL ketika KB ⊨ Pelaku(x) ∧ Senjata(w) ∧ TKP(r).
 """
 import time
-from fol import (Atom, Not, And, Or, Imp, Iff, ForAll, Exists, Neq, instantiate, to_cnf, show, atom_str)
-from kasus import S_IDS, W_IDS, TKP, R_IDS, C, DOMAIN, World
+from fol import (Atom, Not, And, Imp, Iff, ForAll, Exists, Neq, instantiate, to_cnf, show, atom_str)
+from kasus import S_IDS, W_IDS, TKP, R_IDS, C, DOMAIN, World, sn, rn
 from resolusi import Prover
-from planning import State, DIPERIKSA_POLISI, astar, heuristik
+from planning import DIPERIKSA_POLISI, rencanakan, teks_rencana
 from denah import nilai_target
 
 x, y, w, r = '?x', '?y', '?w', '?r'
@@ -175,16 +175,6 @@ class AgenV2:
         pasti = {cat for (cat, _), st in self.state.items() if st == 'pasti'}
         return dict(tersangka='s' not in pasti, senjata='w' not in pasti, ruangan='r' not in pasti)
 
-    @staticmethod
-    def _nama(i):
-        from kasus import sn
-        return sn(i)
-
-    @staticmethod
-    def _ruang(i):
-        from kasus import rn
-        return rn(i)
-
     # ---- relevansi bukti ----
     def _relevansi(self, clue, clauses):
         preds = set()
@@ -207,8 +197,8 @@ class AgenV2:
             self.known.append(cid)
             clue = self.case['by_id'][cid]
             t0 = time.perf_counter()
-            label = f'{cid} ' + (f'kesaksian {self._nama(clue["speaker"])}' if clue['kind'] == 'kesaksian'
-                                 else 'berkas polisi' if clue['kind'] == 'berkas' else f'bukti {self._ruang(clue["room"])}')
+            label = f'{cid} ' + (f'kesaksian {sn(clue["speaker"])}' if clue['kind'] == 'kesaksian'
+                                 else 'berkas polisi' if clue['kind'] == 'berkas' else f'bukti {rn(clue["room"])}')
             added = []
             for f in clue['fol']:
                 added += self.kb.tell(f, label)
@@ -276,7 +266,7 @@ class AgenV2:
     def trace_teks(self):
         """Reasoning trace dalam bentuk baris teks: setiap bukti yang di-TELL, penilaian
         berguna/tidak, kesimpulan baru dari ASK, lalu langkah resolusi untuk jawaban akhir."""
-        nama = {'s': self._nama, 'w': lambda i: C[i], 'r': self._ruang}
+        nama = {'s': sn, 'w': lambda i: C[i], 'r': rn}
         teks_st = {'pasti': 'pasti', 'gugur': 'bukan'}
         kat = {'s': 'pelaku', 'w': 'senjata', 'r': 'TKP'}
         lines = []
@@ -313,34 +303,18 @@ class AgenV2:
         return rooms, sus
 
     def aksi(self, pos, searched, asked, punya_tp=False):
-        rooms, sus = self.target(searched, asked)
-        if not rooms and not sus:
+        """A* ke informasi baru berikutnya; hanya aksi pertama yang dijalankan (online replanning)."""
+        target = self.target(searched, asked)
+        if not any(target):
             return None, {}
-        lokasi = self.case['loc']
-        searched0, asked0 = frozenset(searched), frozenset(asked)
-
-        def goal(st):          # goal test: satu informasi baru didapat
-            return bool((st.digeledah - searched0) & rooms) or bool((st.ditanya - asked0) & sus)
-
-        h = heuristik(list(rooms) + [lokasi[s] for s in sus], goal)
-        start = State(pos, searched0, asked0, False)
-        plan, expanded = astar(start, goal, h, lokasi)
-        if punya_tp:
-            # Rencana dengan teleport hanya dipakai kalau lebih pendek; selain itu teleport disimpan.
-            plan_tp, exp_tp = astar(start._replace(teleport=True), goal, h, lokasi)
-            expanded += exp_tp
-            if plan_tp and plan_tp[0][0] == 'teleport':
-                if plan is None or len(plan_tp) < len(plan):
-                    plan = plan_tp
-                else:
-                    self.stats['teleport_ditahan'] += 1
+        plan, expanded, ditahan = rencanakan(pos, searched, asked, target, self.case['loc'],
+                                             punya_tp=punya_tp, algoritma='astar')
         self.stats['simpul_planner'] += expanded
         self.stats['rencana'] += 1
+        self.stats['teleport_ditahan'] += ditahan
         if not plan:
             return None, {}
-        info = dict(rencana=[f'{a.capitalize()}({self._ruang(b) if a in ("pindah", "teleport", "geledah") else self._nama(b)})'
-                             for a, b in plan], simpul=expanded)
-        return plan[0], info
+        return plan[0], dict(rencana=teks_rencana(plan), simpul=expanded)
 
 
 def tampil_aturan():
