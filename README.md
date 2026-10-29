@@ -29,7 +29,7 @@ Hasil ditulis ke folder `hasil/`.
 | `resolusi.py` | Resolusi refutasi dengan resolusi unit, eliminasi literal murni, dan set of support. Mencatat langkah bukti. |
 | `planning.py` | Skema aksi ala PDDL (`Pindah`, `Geledah`, `Interogasi`, `Tuduh`) dan forward search (BFS). |
 | `agen_v1.py` | Detektif AI versi awal. |
-| `agen_v2.py` | Detektif AI versi materi terbaru, termasuk daftar aturan FOL. |
+| `agen_v2.py` | Detektif AI versi terbaru, termasuk daftar aturan FOL. |
 | `agen_baseline.py` | Polisi gegabah, detektif penebak, dan tim bot pengganti tim manusia. |
 | `permainan.py` | Aturan permainan (ronde, aksi, sidang). |
 | `simulasi.py` | Transkrip dan perbandingan. |
