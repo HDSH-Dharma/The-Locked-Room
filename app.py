@@ -18,7 +18,7 @@ import streamlit as st
 import agen_baseline
 from agen_v1 import AgenV1
 from agen_v2 import AgenV2
-from kasus import S_IDS, W_IDS, TKP, R_IDS, POS, START, MAX_ROUNDS, sn, wn, rn
+from kasus import S_IDS, W_IDS, TKP, R_IDS, POS, START, MAX_ROUNDS, WAKTU_KEMATIAN, sn, wn, rn
 from permainan import Permainan, teks_aksi, teks_jawaban
 from simulasi import teks_bukti, fakta
 
@@ -26,6 +26,13 @@ LOGS = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'logs')
 LAWAN = {'v2': AgenV2, 'v1': AgenV1, 'penebak': lambda: agen_baseline.DetektifPenebak(3, 0)}
 if hasattr(agen_baseline, 'AIPolisi'):
     LAWAN['polisi'] = agen_baseline.AIPolisi
+PEMAIN = ['GK', 'JC', 'HD']
+LATIHAN = 300
+PEMBAGIAN = {}
+_PATH_PEMBAGIAN = os.path.join(os.path.dirname(LOGS), 'pembagian.json')
+if os.path.exists(_PATH_PEMBAGIAN):
+    with open(_PATH_PEMBAGIAN, encoding='utf-8') as _f:
+        PEMBAGIAN = json.load(_f)
 JEDA_ANIMASI = 0.9
 WARNA_D = {1: '#2f6fd6', 2: '#1f9d55', 3: '#d9822b'}
 
@@ -42,6 +49,21 @@ TUDUHAN_TIM_TEKS = {
     'vonis': 'Kalian tidak menuduh sampai sidang.',
 }
 
+CERITA = (f'**Tuan Hartono ditemukan tewas di rumahnya**, dengan perkiraan waktu kematian pukul {WAKTU_KEMATIAN}. '
+          'Polisi langsung menganggap ruangan tempat jasad ditemukan sebagai TKP dan menangkap seorang tersangka, '
+          f'padahal berkasnya hanya berisi motif dan gosip. Sidang dimulai setelah ronde {MAX_ROUNDS}. '
+          'Temukan pelaku, senjata, dan TKP yang sebenarnya sebelum Detektif AI.')
+CARA_MAIN = ('**Cara main**\n'
+             '1. Tiap ronde, Detektif 1, 2, 3 masing-masing 1 aksi.\n'
+             '2. Setelah aksi ketiga, Detektif AI jalan 2–3 aksi.\n'
+             '3. Semua ruangan yang belum digeledah boleh digeledah, kecuali Ruang Tamu (sudah diperiksa polisi). '
+             'Isinya baru ketahuan setelah digeledah, dan ruangan bisa saja kosong.\n'
+             '4. Pelaku selalu bohong; yang tidak bersalah selalu jujur. '
+             'Kesaksian tidak pernah menyebut nama pelaku yang sebenarnya.\n'
+             '5. Jasad bisa sudah dipindahkan dari TKP.\n'
+             '6. Menuduh boleh kapan saja di giliran tim, tapi hanya sekali.\n'
+             f'7. Setelah ronde {MAX_ROUNDS}: sidang. Kalau tim tidak menuduh, hasilnya seri.')
+
 CSS = """
 <style>
 .peta {display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; max-width: 560px;}
@@ -53,7 +75,6 @@ CSS = """
        font-size: 0.75rem; font-weight: 700;}
 .tag {display: inline-block; border: 1px solid rgba(128,128,128,.6); border-radius: 6px; padding: 0 5px;
       margin: 1px 2px 1px 0; font-size: 0.72rem;}
-.tag.bukti {border-color: #c99a06; color: #c99a06;}
 .ket {opacity: .75; font-size: 0.75rem;}
 </style>
 """
@@ -74,11 +95,19 @@ class TimManusia:
 
 
 # ---------------------------------------------------------------- game baru dan log
-def game_baru(pemain, seed, ai_live, uji, tanda):
+def jatah_berikutnya(pemain):
+    """Game test mode berikutnya dari pembagian.json: entri pertama yang belum punya log."""
+    for e in PEMBAGIAN.get(pemain, []):
+        if not os.path.exists(os.path.join(LOGS, f'{pemain}_{e["seed"]}.json')):
+            return e
+    return None
+
+
+def game_baru(pemain, seed, ai_live, uji):
     ss = st.session_state
     g = Permainan(seed, LAWAN[ai_live](), TimManusia(), teleport=True, menguping=True, uji=uji)
     g.mulai()
-    ss.game, ss.ai_live, ss.pemain, ss.tanda = g, ai_live, pemain, tanda
+    ss.game, ss.ai_live, ss.pemain = g, ai_live, pemain
     ss.t_mulai, ss.t_selesai, ss.log_path = time.time(), None, None
     ss.ai_pending, ss.pesan, ss.catatan = False, None, ''
 
@@ -87,7 +116,7 @@ def simpan_log(g):
     ss = st.session_state
     folder = LOGS if g.uji else os.path.join(LOGS, 'latihan')
     os.makedirs(folder, exist_ok=True)
-    data = g.ke_log(ss.pemain, ss.ai_live, ss.t_selesai - ss.t_mulai, ss.tanda)
+    data = g.ke_log(ss.pemain, ss.ai_live, ss.t_selesai - ss.t_mulai)
     base = f'{ss.pemain}_{g.case["seed"]}'
     path, i = os.path.join(folder, base + '.json'), 2
     while os.path.exists(path):          # jangan menimpa log lama dengan kasus yang sama
@@ -141,8 +170,8 @@ def peta_html(g, ai_pos=None, aktif=None):
         if pion:
             isi.append(''.join(pion) + '<br>')
         tag = []
-        if st.session_state.tanda and g.case['room_clues'][room] and room not in g.tim_searched:
-            tag.append('<span class="tag bukti">ada bukti</span>')
+        if room == START:
+            tag.append('<span class="tag">sudah diperiksa polisi</span>')
         if room in g.tim_searched:
             tag.append('<span class="tag">digeledah tim</span>')
         if room in g.ai_searched:
@@ -215,9 +244,10 @@ def panel_aksi(g, d):
     if gel:
         st.button(f'Geledah {rn(pos)}', key=f'g-{r}-{d}', on_click=klik_aksi, args=(d, gel[0]),
                   type='primary', width='stretch')
+    elif pos == START:
+        st.button('Sudah diperiksa polisi', key=f'g-{r}-{d}', disabled=True, width='stretch')
     else:
-        alasan = 'Ruangan ini sudah digeledah tim.' if pos in g.tim_searched else 'Tidak ada yang bisa digeledah di sini.'
-        st.button('Geledah', key=f'g-{r}-{d}', disabled=True, width='stretch', help=alasan)
+        st.button('Geledah', key=f'g-{r}-{d}', disabled=True, width='stretch', help='Ruangan ini sudah digeledah tim.')
     tanya = [a for a in legal if a[0] == 'interogasi']
     for act in tanya:
         st.button(f'Interogasi {sn(act[1])}', key=f'i-{r}-{d}-{act[1]}', on_click=klik_aksi, args=(d, act),
@@ -274,7 +304,7 @@ def gerak_ai(g):
 
 
 def trace_sementara(g):
-    """Reasoning trace dari event permainan. Dipakai sampai trace_teks() dari Dharma tersedia."""
+    """Reasoning trace dari event permainan, untuk lawan yang belum punya trace_teks()."""
     case, L = g.case, []
     for r, siapa, jenis, data in g.events:
         if siapa == 'ai' and jenis == 'aksi':
@@ -334,34 +364,57 @@ ss = st.session_state
 
 with st.sidebar:
     st.header('Game baru')
-    pemain = st.text_input('Inisial pemain', max_chars=4, placeholder='GK').strip().upper()
-    seed = st.number_input('Nomor kasus', min_value=1, max_value=300, value=1, step=1)
-    ai_live = st.selectbox('Lawan AI', list(LAWAN))
-    mode = st.radio('Mode', ['Normal', 'Test mode'], horizontal=True,
+    terkunci = 'game' in ss and not ss.game.hasil      # pengaturan tidak bisa diubah selama game berjalan
+    pemain = st.selectbox('Inisial pemain', PEMAIN, index=None, placeholder='Pilih inisial', disabled=terkunci)
+    mode = st.radio('Mode', ['Normal', 'Test mode'], horizontal=True, disabled=terkunci,
                     help='Test mode: tanpa animasi, tuduhan AI disembunyikan, game lanjut sampai tim menuduh atau ronde 7 habis.')
-    tanda = st.checkbox('Tandai ruangan berisi bukti', value=True)
-    if st.button('Mulai', type='primary', width='stretch', disabled=not pemain.isalnum()):
-        game_baru(pemain, int(seed), ai_live, mode == 'Test mode', tanda)
+    jatah = None
+    if mode == 'Test mode' and PEMBAGIAN:
+        # Kasus dan lawan diambil dari pembagian.json, jadi pemain tidak tahu sedang melawan AI yang mana.
+        jatah = jatah_berikutnya(pemain) if pemain else None
+        if jatah:
+            st.caption(f'Game ke-{jatah["no"]} · Kasus {jatah["seed"]} · lawan dirahasiakan')
+        elif pemain:
+            st.caption('Semua game jatahmu sudah selesai.')
+        siap = bool(jatah)
+    elif mode == 'Normal':
+        # Kasus 1–300 dipakai playtest. Latihan 1 adalah kasus 301, supaya latihan tidak membocorkannya.
+        seed = LATIHAN + st.number_input('Nomor latihan', min_value=1, max_value=50, value=1, step=1, disabled=terkunci)
+        ai_live = st.selectbox('Lawan AI', list(LAWAN), disabled=terkunci)
+        siap = bool(pemain)
+    else:
+        seed = st.number_input('Nomor kasus', min_value=1, max_value=LATIHAN, value=1, step=1, disabled=terkunci)
+        ai_live = st.selectbox('Lawan AI', list(LAWAN), disabled=terkunci)
+        siap = bool(pemain)
+    if st.button('Mulai', type='primary', width='stretch', disabled=not siap or terkunci):
+        if jatah:
+            game_baru(pemain, jatah['seed'], jatah['lawan'], True)
+        else:
+            game_baru(pemain, int(seed), ai_live, mode == 'Test mode')
         st.rerun()
-    if not pemain.isalnum():
-        st.caption('Isi inisial (huruf/angka) untuk mulai.')
-    st.divider()
-    st.markdown('**Cara main**\n'
-                '1. Tiap ronde, Detektif 1, 2, 3 masing-masing 1 aksi.\n'
-                '2. Setelah aksi ketiga, Detektif AI jalan 2–3 aksi.\n'
-                '3. Pelaku selalu bohong; yang tidak bersalah selalu jujur.\n'
-                '4. Jasad bisa sudah dipindahkan dari TKP.\n'
-                '5. Menuduh boleh kapan saja di giliran tim, tapi hanya sekali.\n'
-                f'6. Setelah ronde {MAX_ROUNDS}: sidang. Kalau tim tidak menuduh, hasilnya seri.')
+    if terkunci:
+        st.caption('Game sedang berjalan. Pengaturan terkunci sampai game selesai. Refresh halaman untuk membatalkan.')
+    elif not pemain:
+        st.caption('Pilih inisial untuk mulai.')
+    if 'game' in ss:
+        st.divider()
+        st.markdown(CARA_MAIN)
 
 if 'game' not in ss:
     st.title('Rumah Terkunci')
-    st.write('Isi inisial di samping, pilih nomor kasus dan lawan AI, lalu tekan **Mulai**.')
+    st.info(CERITA)
+    st.markdown(CARA_MAIN)
+    st.write('Pilih inisial dan mode di samping, lalu tekan **Mulai**.')
     st.stop()
 
 g = ss.game
 mode_teks = 'Test mode' if g.uji else 'Normal'
-st.title(f'Rumah Terkunci · Kasus {g.case["seed"]}')
+st.title(f'Rumah Terkunci · Kasus {g.case["seed"]}' if g.uji else f'Rumah Terkunci · Latihan {g.case["seed"] - LATIHAN}')
+st.info(f'**Tuan Hartono ditemukan tewas di rumahnya.** Jasadnya ditemukan pagi ini di **{rn(g.case["found"])}**, '
+        f'dengan perkiraan waktu kematian pukul {WAKTU_KEMATIAN}. Polisi langsung menganggap '
+        f'{rn(g.case["found"]).lower()} sebagai TKP dan menangkap **{sn(g.case["arrested"])}**, padahal berkasnya '
+        f'hanya berisi motif dan gosip. Sidang dimulai setelah ronde {MAX_ROUNDS}. '
+        'Temukan pelaku, senjata, dan TKP yang sebenarnya sebelum Detektif AI.')
 d_aktif = g.giliran_tim()
 if g.hasil:
     giliran = 'Selesai'
@@ -374,7 +427,7 @@ else:
 m1, m2, m3, m4 = st.columns(4)
 m1.metric('Ronde', f'{g.ronde}/{MAX_ROUNDS}')
 m2.metric('Giliran', giliran)
-m3.metric('Lawan', ss.ai_live)
+m3.metric('Lawan', 'Dirahasiakan' if g.uji and not g.hasil else ss.ai_live)
 m4.metric('Mode', mode_teks)
 
 kiri, kanan = st.columns([3, 2], gap='large')
