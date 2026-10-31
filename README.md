@@ -5,65 +5,52 @@ Folder ini berisi dua versi Detektif AI yang benar-benar dijalankan dan dibandin
 
 | Versi | Materi | Representasi | Inferensi | Gerak |
 |---|---|---|---|---|
-| v1 (`agen_v1.py`) | Lecture 04 · Propositional Logic | 64 model, bukti ditulis sebagai fungsi Python | Model checking | BFS ke ruangan belum digeledah / tersangka belum ditanya terdekat |
-| v2 (`agen_v2.py`) | Lecture 05 · FOL, Reasoning and Planning | 18 aturan FOL berkuantor + fakta dari bukti | Universal instantiation → CNF → resolusi | Problem formulation (ACTIONS, RESULT, goal test) + A* |
+| v1 (`agents/v1_agent.py`) | Lecture 04 · Propositional Logic | 64 model, bukti ditulis sebagai fungsi Python | Model checking | BFS ke ruangan belum digeledah / tersangka belum ditanya terdekat |
+| v2 (`agents/v2_agent.py`) | Lecture 05 · FOL, Reasoning and Planning | 18 aturan FOL berkuantor + fakta dari bukti | Universal instantiation → CNF → resolusi | Problem formulation (ACTIONS, RESULT, goal test) + A* |
 
 Engine dan agen cukup Python 3.9 atau lebih baru tanpa library tambahan. UI memakai Streamlit
 (`pip install -r requirements.txt`).
 
 ## Menjalankan
 
+Semua perintah dijalankan dari folder repo.
+
 ```bash
-streamlit run app.py        # UI untuk playtest (Test mode) dan latihan (Normal)
-python simulasi.py          # transkrip satu permainan + perbandingan 300 kasus (± 5 menit)
-python simulasi.py 50       # versi cepat, 50 kasus
-python uji_konsistensi.py   # cek v1 dan v2 selalu menyimpulkan hal yang sama (300 kasus)
-python uji_planning.py      # cek A* terhadap BFS
-python replay.py            # cek replay log di logs/ sama dengan hasil saat main
-python evaluasi.py          # tabel evaluasi dari semua log test mode
+streamlit run app.py                # UI untuk playtest (Test mode) dan latihan (Normal)
+python -m scripts.simulasi          # transkrip satu permainan + perbandingan 300 kasus (± 5 menit)
+python -m scripts.simulasi 50       # versi cepat, 50 kasus
+python -m scripts.evaluasi          # tabel evaluasi dari semua log test mode
+python -m tests.uji_konsistensi     # cek v1 dan v2 selalu menyimpulkan hal yang sama (300 kasus)
+python -m tests.uji_planning        # cek A* terhadap BFS
+python -m tests.uji_replay          # cek replay log di logs/ sama dengan hasil saat main
 ```
 
 Hasil ditulis ke folder `hasil/`.
 
-## Isi folder
+## Struktur folder
 
-| File | Isi |
+Satu folder satu peran, nama file `<fitur>_<peran>.py`. Aturan lengkapnya ada di [CODING_AGREEMENT.md](CODING_AGREEMENT.md).
+
+| Folder | Isi |
 |---|---|
-| `kasus.py` | Data rumah, tersangka, senjata, dan generator kasus. Nomor kasus yang sama selalu menghasilkan kasus yang sama. Setiap bukti punya bentuk proposisional (untuk v1) dan FOL (untuk v2). |
-| `fol.py` | Sintaks FOL, universal instantiation (reduksi ke proposisional), konversi CNF. |
-| `resolusi.py` | Resolusi refutasi dengan resolusi unit, eliminasi literal murni, dan set of support. Mencatat langkah bukti. |
-| `planning.py` | Problem formulation gerak AI: state, ACTIONS(s) (`Pindah`, `Teleport`, `Geledah`, `Interogasi`, `Tuduh`), RESULT(s, a), goal test, dan A* dengan heuristik jarak Manhattan. |
-| `antarmuka.py` | Kelas dasar `DetektifAI` dan `Tim` (kontrak dengan engine), serta mixin bersama untuk mencatat topik menguping dan model checking. |
-| `agen_v1.py` | Detektif AI versi awal. |
-| `agen_v2.py` | Detektif AI versi terbaru, termasuk daftar aturan FOL. |
-| `agen_baseline.py` | Polisi, detektif penebak, AI diam, dan tim bot pengganti tim manusia. |
-| `daftar_ai.py` | Daftar Detektif AI yang bisa dilawan, dipakai bersama oleh UI, replay, dan evaluasi. |
-| `permainan.py` | Engine: aturan permainan (ronde, aksi, teleport, menguping, sidang, test mode, log). |
-| `denah.py` | Denah rumah, jarak, teleport, dan topik bukti untuk menguping. |
-| `teks.py` | Teks tampilan (aksi, jawaban, bukti, kesimpulan) untuk UI dan laporan. |
-| `app.py` | UI Streamlit. |
-| `buat_pembagian.py`, `pembagian.json` | Pembagian 300 kasus playtest: 100 per pemain, 25 per lawan AI. |
-| `replay.py` | Memutar ulang aksi tim dari log melawan Detektif AI mana pun. |
-| `evaluasi.py` | Tabel evaluasi dari replay semua log test mode. |
-| `simulasi.py` | Transkrip dan perbandingan dengan tim bot. |
-| `uji_konsistensi.py` | Uji v1 vs v2: kesimpulan harus sama setelah setiap bukti. |
-| `uji_planning.py` | Uji A*: rencana sama pendek dengan BFS, heuristik admissible, jumlah node A* vs BFS. |
+| `models/` | Data saja: rumah dan tersangka (`rumah_model`), denah (`denah_model`), angka dan teks bukti (`bukti_model`), bentuk formula FOL (`fol_model`), 18 aturan FOL (`aturan_model`), topik menguping, state planning, teks UI, pembagian, folder, kolom evaluasi. |
+| `services/` | Logika domain tanpa UI: RNG (`acak_service`), generator kasus (`kasus_service`), denah dan teleport, topik menguping, FOL dan CNF (`fol_service`), resolusi (`resolusi_service`), KB TELL/ASK (`kb_service`), A* dan BFS (`planning_service`), teks tampilan, log, pembagian, replay, evaluasi, uji konsistensi, transkrip, perbandingan. |
+| `agents/` | Pemain: kontrak `DetektifAI` dan `Tim` (`kontrak_agent`), mixin bersama (`mixin_agent`), Detektif AI v1 dan v2, baseline (polisi, penebak), tim bot, tim rekaman log, tim manusia, dan daftar `LAWAN_AI` (`daftar_agent`). |
+| `engine/` | `permainan_engine`: aturan permainan (ronde, aksi, teleport, menguping, sidang, test mode, log). |
+| `viewmodels/` | Semua logika UI: `permainan_viewmodel` (aksi tombol, peta, catatan, trace, hasil) dan `sidebar_viewmodel` (jatah game, pilihan latihan). |
+| `views/` | UI Streamlit yang hanya menampilkan: halaman, sidebar, peta, aksi, catatan, hasil, komponen. |
+| `scripts/` | Perintah: `simulasi`, `evaluasi`, `buat_pembagian`. |
+| `tests/` | Uji: `uji_konsistensi`, `uji_planning`, `uji_replay`. |
+| `app.py` | Titik masuk Streamlit. |
+| `pembagian.json` | Pembagian 300 kasus playtest: 100 per pemain, 25 per lawan AI. |
 
 ## Menambah Detektif AI baru
 
-1. Buat kelas turunan `DetektifAI` (atau `AgenV1`/`AgenV2`) dan isi `mulai`, `amati`, `aksi`, dan `tuduhan`
-   sesuai kebutuhan. Agen yang bergerak dengan A* atau BFS cukup mewarisi `PerencanaLangkah` dan mengisi `target()`.
-2. Daftarkan kelasnya di `LAWAN_AI` (`daftar_ai.py`). UI, replay, dan evaluasi otomatis ikut memakainya.
-3. Kalau perlu ikut dimainkan di playtest, tambahkan namanya ke `LAWAN` di `buat_pembagian.py`.
-
-## Konvensi kode
-
-- Nama untuk konsep game memakai bahasa Indonesia (`ronde`, `tuduhan`, `geledah`). Kunci data kasus
-  (`case['clues']`, `room_clues`, `found`, `loc`) dan nama API lama (`generate_case`, `neighbors`) tetap
-  bahasa Inggris karena dipakai di semua modul dan di log.
-- Kode pencarian memakai notasi materi kuliah (AIMA): `frontier`, `parent`, `g`, `h`, `s`, `a`.
-- Satu fungsi satu tugas; method yang diawali `_` hanya dipakai di dalam kelas atau modulnya.
-- Komentar menjelaskan alasan atau aturan yang tidak terlihat dari kode, bukan mengulang isi kode.
+1. Buat file `agents/<nama>_agent.py` berisi turunan `DetektifAI` (atau `AgenV1`/`AgenV2`), dan isi `mulai`,
+   `amati`, `aksi`, dan `tuduhan` sesuai kebutuhan. Agen yang bergerak dengan A* atau BFS cukup mewarisi
+   `PerencanaLangkah` dan mengisi `target()`.
+2. Daftarkan kelasnya di `LAWAN_AI` (`agents/daftar_agent.py`). UI, replay, dan evaluasi otomatis ikut memakainya.
+3. Kalau perlu ikut dimainkan di playtest, tambahkan namanya ke `LAWAN` di `models/pembagian_model.py`.
 
 ## Cara main singkat
 
