@@ -10,7 +10,7 @@ import json
 import os
 import random
 
-from logic.evaluasi.log import log_ada
+from logic.playtest.log import log_ada
 from model.folder_model import PATH_PEMBAGIAN
 from model.pembagian_model import JUMLAH_KASUS, LAWAN, PEMAIN, SEED_PEMBAGIAN
 

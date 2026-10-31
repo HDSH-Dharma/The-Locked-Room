@@ -1,1 +1,1 @@
-"""Logic · evaluasi — log, pembagian kasus, replay, evaluasi, uji konsistensi, transkrip, perbandingan."""
+"""Logic · evaluasi — ringkasan evaluasi dari log playtest, uji konsistensi, transkrip, perbandingan."""

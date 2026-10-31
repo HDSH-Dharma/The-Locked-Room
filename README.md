@@ -40,7 +40,8 @@ Aturan lengkapnya ada di [CODING_AGREEMENT.md](CODING_AGREEMENT.md).
 | `logic/agen/` | Kontrak `DetektifAI` dan `Tim` (`kontrak`), mixin bersama (`mixin`), Detektif AI v1 dan v2, baseline (polisi, penebak), tim bot, tim rekaman log, tim manusia, dan daftar `LAWAN_AI` (`daftar`). |
 | `logic/permainan/` | Aturan permainan (`permainan`): ronde, aksi, teleport, menguping, sidang, test mode, log. |
 | `logic/layar/` | Logika layar UI: `LayarPermainan` (aksi tombol, peta, catatan, trace, hasil), `LayarSidebar` (jatah game, pilihan latihan), dan teks tampilan (`teks`). |
-| `logic/evaluasi/` | Log, pembagian kasus, replay, ringkasan evaluasi, uji konsistensi, transkrip, perbandingan. |
+| `logic/playtest/` | Log game test mode (`log`), pembagian 300 kasus dan jatah game tiap pemain (`pembagian`), replay log melawan Detektif AI mana pun (`replay`). |
+| `logic/evaluasi/` | Ringkasan evaluasi dari log playtest (`ringkasan`), uji konsistensi v1 vs v2 (`konsistensi`), transkrip (`transkrip`), perbandingan simulasi (`perbandingan`). |
 | `ui/` | Tampilan Streamlit: halaman, sidebar, peta, aksi, catatan, hasil, komponen. |
 | `scripts/` | Perintah: `simulasi`, `evaluasi`, `buat_pembagian`. |
 | `tests/` | Uji: `uji_konsistensi`, `uji_planning`, `uji_replay`. |

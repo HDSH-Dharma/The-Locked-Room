@@ -8,8 +8,8 @@ import math
 from collections import Counter, defaultdict
 
 from logic.agen.daftar import LAWAN_AI
-from logic.evaluasi.log import muat_log
-from logic.evaluasi.replay import replay
+from logic.playtest.log import muat_log
+from logic.playtest.replay import replay
 from model.evaluasi_model import KOLOM_LAPORAN, MENANG_AI, MENANG_PEMAIN
 
 # MARK: - Angka dasar

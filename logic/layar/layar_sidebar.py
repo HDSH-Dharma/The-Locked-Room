@@ -3,7 +3,7 @@ layar_sidebar.py
 Logic — logika sidebar "Game baru": kunci pengaturan, jatah game test mode, dan nomor kasus latihan.
 """
 from logic.agen.daftar import LAWAN_AI
-from logic.evaluasi.pembagian import jatah_berikutnya, muat_pembagian
+from logic.playtest.pembagian import jatah_berikutnya, muat_pembagian
 from model.pembagian_model import PEMAIN
 from model.ui_model import JUMLAH_LATIHAN, KASUS_PLAYTEST
 

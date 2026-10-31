@@ -10,10 +10,10 @@ import time
 
 from logic.agen.daftar import LAWAN_AI
 from logic.agen.manusia import TimManusia
-from logic.evaluasi.log import simpan_log
 from logic.kasus.rumah import rn, sn, wn
 from logic.layar.teks import fakta, target_menguping, teks_aksi, teks_bukti, teks_jawaban
 from logic.permainan.permainan import Permainan
+from logic.playtest.log import simpan_log
 from model.folder_model import FOLDER_LATIHAN, FOLDER_LOGS
 from model.rumah_model import MAX_ROUNDS, POS, R_IDS, S_IDS, START, TKP, W_IDS, WAKTU_KEMATIAN
 from model.ui_model import HASIL_TEKS, KASUS_PLAYTEST, TUDUHAN_TIM_TEKS, WARNA_AI, WARNA_D

@@ -6,7 +6,7 @@ Script — membuat pembagian.json: 300 kasus playtest, 100 per pemain, 25 per la
 """
 import json
 
-from logic.evaluasi.pembagian import buat_pembagian
+from logic.playtest.pembagian import buat_pembagian
 from model.folder_model import PATH_PEMBAGIAN
 
 # MARK: - Main

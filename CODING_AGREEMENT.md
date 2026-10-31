@@ -7,7 +7,7 @@ Aturan menulis kode untuk semua anggota tim. Setiap PR ke `rapikan_kode` harus m
 | Folder | Isi | Boleh | Tidak boleh |
 | --- | --- | --- | --- |
 | `model/` | Data murni | Konstanta, tabel teks, `namedtuple`, konstruktor data, indeks turunan (comprehension) | Fungsi yang mengambil keputusan; import dari `logic/` atau `ui/` |
-| `logic/` | Semua logika | Generator kasus, penalaran, agen, aturan permainan, logika layar, evaluasi | `st.*` (Streamlit); import dari `ui/` |
+| `logic/` | Semua logika | Generator kasus, penalaran, agen, aturan permainan, logika layar, playtest, evaluasi | `st.*` (Streamlit); import dari `ui/` |
 | `ui/` | Tampilan Streamlit saja | `st.*` dan if/else/for untuk menampilkan data yang disiapkan `logic/layar/` | Menghitung, memformat teks yang butuh logika, memanggil engine atau generator langsung |
 
 Di dalam `logic/`, file dikelompokkan per konteks. Satu konteks satu folder:
@@ -19,7 +19,8 @@ Di dalam `logic/`, file dikelompokkan per konteks. Satu konteks satu folder:
 | `logic/agen/` | Kontrak `DetektifAI`/`Tim`, mixin, Detektif AI v1/v2, baseline, tim bot, tim rekaman, daftar lawan |
 | `logic/permainan/` | Aturan permainan (`Permainan`) |
 | `logic/layar/` | Logika layar UI (`LayarPermainan`, `LayarSidebar`) dan teks tampilan |
-| `logic/evaluasi/` | Log, pembagian kasus, replay, evaluasi, uji konsistensi, transkrip, perbandingan |
+| `logic/playtest/` | Log game test mode, pembagian 300 kasus dan jatah tiap pemain, replay log |
+| `logic/evaluasi/` | Ringkasan evaluasi dari log playtest, uji konsistensi, transkrip, perbandingan simulasi |
 
 Di luar tiga lapisan itu hanya ada titik masuk: `app.py` (Streamlit, `streamlit run app.py`), `scripts/` (perintah command line), dan `tests/` (skrip uji).
 
