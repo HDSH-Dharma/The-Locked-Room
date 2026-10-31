@@ -11,7 +11,7 @@ from collections import Counter, defaultdict
 from daftar_ai import LAWAN_AI
 from replay import muat_log, replay
 
-FOLDER_HASIL = 'hasil'
+FOLDER_HASIL = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'hasil')
 MENANG_PEMAIN = ('tim', 'ai-salah')     # tuduhan AI yang salah membuat AI kalah (proposal)
 MENANG_AI = ('ai', 'tim-salah')
 KOLOM_LAPORAN = [('pemain_menang', 'Pemain menang'), ('ai_menang', 'AI menang'), ('seri', 'Seri'),

@@ -12,6 +12,8 @@ from daftar_ai import LAWAN_AI
 from kasus import World
 from permainan import Permainan
 
+FOLDER_LOGS = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'logs')
+
 
 class TimRekaman(Tim):
     """Pengganti tim manusia: menjalankan ulang aksi yang tercatat di log, ronde demi ronde."""
@@ -51,7 +53,7 @@ def replay(log, agen):
     return game, game.jalan(), tim.konflik_teleport
 
 
-def muat_log(folder='logs'):
+def muat_log(folder=FOLDER_LOGS):
     """Semua log di folder (tidak termasuk subfolder latihan), urut nama file."""
     logs = []
     for path in sorted(glob.glob(os.path.join(folder, '*.json'))):
@@ -60,7 +62,7 @@ def muat_log(folder='logs'):
     return logs
 
 
-def uji_replay(folder='logs'):
+def uji_replay(folder=FOLDER_LOGS):
     """Replay melawan AI yang dilawan saat main harus memberi hasil yang sama, dan replay
     melawan semua AI lain harus jalan tanpa error."""
     beda = konflik = 0

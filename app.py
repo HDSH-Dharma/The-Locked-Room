@@ -25,7 +25,7 @@ FOLDER_REPO = os.path.dirname(os.path.abspath(__file__))
 LOGS = os.path.join(FOLDER_REPO, 'logs')
 PATH_PEMBAGIAN = os.path.join(FOLDER_REPO, 'pembagian.json')
 PEMAIN = ['GK', 'JC', 'HD']
-LATIHAN = 300                # kasus 1–300 untuk playtest; latihan ke-n memakai kasus 300 + n
+KASUS_PLAYTEST = 300         # kasus 1–300 untuk playtest; latihan ke-n memakai kasus 300 + n
 JUMLAH_LATIHAN = 50
 JEDA_ANIMASI = 0.9
 WARNA_D = {1: '#2f6fd6', 2: '#1f9d55', 3: '#d9822b'}
@@ -449,10 +449,10 @@ def _pilihan_manual(pemain, mode, terkunci):
     """Mode normal (latihan, kasus 301–350 supaya kasus playtest tidak bocor), atau test mode
     tanpa pembagian.json. Mengembalikan (seed, lawan, uji) atau None kalau inisial belum dipilih."""
     if mode == 'Normal':
-        seed = LATIHAN + st.number_input('Nomor latihan', min_value=1, max_value=JUMLAH_LATIHAN, value=1, step=1,
+        seed = KASUS_PLAYTEST + st.number_input('Nomor latihan', min_value=1, max_value=JUMLAH_LATIHAN, value=1, step=1,
                                          disabled=terkunci)
     else:
-        seed = st.number_input('Nomor kasus', min_value=1, max_value=LATIHAN, value=1, step=1, disabled=terkunci)
+        seed = st.number_input('Nomor kasus', min_value=1, max_value=KASUS_PLAYTEST, value=1, step=1, disabled=terkunci)
     ai_live = st.selectbox('Lawan AI', list(LAWAN_AI), disabled=terkunci)
     return (int(seed), ai_live, mode == 'Test mode') if pemain else None
 
@@ -466,7 +466,7 @@ def halaman_awal():
 
 
 def kepala_permainan(g, d_aktif):
-    judul = f'Kasus {g.case["seed"]}' if g.uji else f'Latihan {g.case["seed"] - LATIHAN}'
+    judul = f'Kasus {g.case["seed"]}' if g.uji else f'Latihan {g.case["seed"] - KASUS_PLAYTEST}'
     st.title(f'Rumah Terkunci · {judul}')
     st.info(f'**Tuan Hartono ditemukan tewas di rumahnya.** Jasadnya ditemukan pagi ini di **{rn(g.case["found"])}**, '
             f'dengan perkiraan waktu kematian pukul {WAKTU_KEMATIAN}. Polisi langsung menganggap '

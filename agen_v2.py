@@ -89,7 +89,7 @@ LATAR = [Atom('Berdarah', 'Pisau'), Atom('Berdarah', 'Vas'), Not(Atom('Berdarah'
 def _predicates(f, out):
     if f[0] == 'atom':
         out.add(f[1])
-    elif f[0] in ('not',):
+    elif f[0] == 'not':
         _predicates(f[1], out)
     elif f[0] in ('and', 'or'):
         for g in f[1]:

@@ -1,5 +1,5 @@
 """
-Search and planning untuk Detektif AI v2: problem formulation (Lecture Note 02) dan A*.
+Search and planning Detektif AI: problem formulation (Lecture Note 02), A* (v2), dan BFS (v1).
 
 State        : (ruangan AI, ruangan yang sudah digeledah, tersangka yang sudah ditanya,
                masih memegang teleport). KB tidak berubah selama perencanaan, jadi tidak
