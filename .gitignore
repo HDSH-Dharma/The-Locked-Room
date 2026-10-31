@@ -10,9 +10,9 @@ venv/
 .idea/
 .DS_Store
 
-# Practice games in normal mode (only test-mode logs are used for evaluation)
+# Log latihan (mode Normal); evaluasi hanya memakai log test mode
 logs/latihan/
 
-# Generated simulation output (evaluation tables are committed explicitly)
+# Keluaran simulasi; tabel evaluasi di-commit terpisah
 hasil/*.json
 !hasil/.gitkeep

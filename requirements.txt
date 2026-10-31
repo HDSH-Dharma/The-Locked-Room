@@ -1,3 +1,3 @@
-# Python 3.9+; no third-party packages needed for the agents.
-# Browser UI (app.py)
+# Python 3.9+. Engine dan agen tidak butuh library tambahan.
+# UI (app.py)
 streamlit>=1.50
