@@ -7,7 +7,7 @@ setelah setiap bukti, dalam urutan bukti acak.
 """
 import sys
 
-from services.konsistensi_service import bandingkan
+from logic.evaluasi.konsistensi import bandingkan
 
 if __name__ == '__main__':
     bandingkan(int(sys.argv[1]) if len(sys.argv) > 1 else 300, denah=sys.argv[2] if len(sys.argv) > 2 else '9')

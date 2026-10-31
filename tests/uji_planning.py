@@ -13,11 +13,11 @@ menguping), A* dibandingkan dengan BFS pada state awal dan goal test yang sama:
 import sys
 from collections import Counter
 
-from agents.tim_bot_agent import TimLambat
-from agents.v2_agent import AgenV2
-from engine.permainan_engine import Permainan
-from models.planning_model import State
-from services.planning_service import astar, bfs, goal_info_baru, heuristik, result
+from logic.agen.agen_v2 import AgenV2
+from logic.agen.tim_bot import TimLambat
+from logic.penalaran.planning import astar, bfs, goal_info_baru, heuristik, result
+from logic.permainan.permainan import Permainan
+from model.planning_model import State
 
 # MARK: - Pembanding
 

@@ -6,8 +6,8 @@ Script — tabel evaluasi dari replay semua log test mode melawan setiap Detekti
 """
 import os
 
-from models.folder_model import FOLDER_HASIL
-from services.evaluasi_service import baca_log, jalankan, per_pemain, ringkas, tabel_markdown, tulis_csv
+from logic.evaluasi.ringkasan import baca_log, jalankan, per_pemain, ringkas, tabel_markdown, tulis_csv
+from model.folder_model import FOLDER_HASIL
 
 # MARK: - Main
 

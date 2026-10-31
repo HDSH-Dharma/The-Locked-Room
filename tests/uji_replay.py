@@ -5,10 +5,10 @@ replay melawan semua AI lain harus jalan tanpa error.
 
   python -m tests.uji_replay
 """
-from agents.daftar_agent import LAWAN_AI
-from models.folder_model import FOLDER_LOGS
-from services.log_service import muat_log
-from services.replay_service import replay
+from logic.agen.daftar import LAWAN_AI
+from logic.evaluasi.log import muat_log
+from logic.evaluasi.replay import replay
+from model.folder_model import FOLDER_LOGS
 
 # MARK: - Uji
 

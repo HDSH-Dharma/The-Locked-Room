@@ -10,6 +10,6 @@ Entry point UI Streamlit: tim 3 detektif melawan Detektif AI.
 Setiap game test mode yang selesai disimpan ke logs/<inisial>_<seed>.json untuk replay.
 Game mode normal adalah latihan; lognya disimpan ke logs/latihan/ yang tidak masuk git.
 """
-from views.halaman_view import tampilkan_aplikasi
+from ui.halaman_ui import tampilkan_aplikasi
 
 tampilkan_aplikasi()

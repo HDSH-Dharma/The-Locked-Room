@@ -5,8 +5,8 @@ Folder ini berisi dua versi Detektif AI yang benar-benar dijalankan dan dibandin
 
 | Versi | Materi | Representasi | Inferensi | Gerak |
 |---|---|---|---|---|
-| v1 (`agents/v1_agent.py`) | Lecture 04 · Propositional Logic | 64 model, bukti ditulis sebagai fungsi Python | Model checking | BFS ke ruangan belum digeledah / tersangka belum ditanya terdekat |
-| v2 (`agents/v2_agent.py`) | Lecture 05 · FOL, Reasoning and Planning | 18 aturan FOL berkuantor + fakta dari bukti | Universal instantiation → CNF → resolusi | Problem formulation (ACTIONS, RESULT, goal test) + A* |
+| v1 (`logic/agen/agen_v1.py`) | Lecture 04 · Propositional Logic | 64 model, bukti ditulis sebagai fungsi Python | Model checking | BFS ke ruangan belum digeledah / tersangka belum ditanya terdekat |
+| v2 (`logic/agen/agen_v2.py`) | Lecture 05 · FOL, Reasoning and Planning | 18 aturan FOL berkuantor + fakta dari bukti | Universal instantiation → CNF → resolusi | Problem formulation (ACTIONS, RESULT, goal test) + A* |
 
 Engine dan agen cukup Python 3.9 atau lebih baru tanpa library tambahan. UI memakai Streamlit
 (`pip install -r requirements.txt`).
@@ -29,16 +29,19 @@ Hasil ditulis ke folder `hasil/`.
 
 ## Struktur folder
 
-Satu folder satu peran, nama file `<fitur>_<peran>.py`. Aturan lengkapnya ada di [CODING_AGREEMENT.md](CODING_AGREEMENT.md).
+Tiga lapisan: `model/` (data), `logic/` (semua logika, dikelompokkan per konteks), dan `ui/` (tampilan).
+Aturan lengkapnya ada di [CODING_AGREEMENT.md](CODING_AGREEMENT.md).
 
 | Folder | Isi |
 |---|---|
-| `models/` | Data saja: rumah dan tersangka (`rumah_model`), denah (`denah_model`), angka dan teks bukti (`bukti_model`), bentuk formula FOL (`fol_model`), 18 aturan FOL (`aturan_model`), topik menguping, state planning, teks UI, pembagian, folder, kolom evaluasi. |
-| `services/` | Logika domain tanpa UI: RNG (`acak_service`), generator kasus (`kasus_service`), denah dan teleport, topik menguping, FOL dan CNF (`fol_service`), resolusi (`resolusi_service`), KB TELL/ASK (`kb_service`), A* dan BFS (`planning_service`), teks tampilan, log, pembagian, replay, evaluasi, uji konsistensi, transkrip, perbandingan. |
-| `agents/` | Pemain: kontrak `DetektifAI` dan `Tim` (`kontrak_agent`), mixin bersama (`mixin_agent`), Detektif AI v1 dan v2, baseline (polisi, penebak), tim bot, tim rekaman log, tim manusia, dan daftar `LAWAN_AI` (`daftar_agent`). |
-| `engine/` | `permainan_engine`: aturan permainan (ronde, aksi, teleport, menguping, sidang, test mode, log). |
-| `viewmodels/` | Semua logika UI: `permainan_viewmodel` (aksi tombol, peta, catatan, trace, hasil) dan `sidebar_viewmodel` (jatah game, pilihan latihan). |
-| `views/` | UI Streamlit yang hanya menampilkan: halaman, sidebar, peta, aksi, catatan, hasil, komponen. |
+| `model/` | Data saja: rumah dan tersangka (`rumah_model`), denah (`denah_model`), angka dan teks bukti (`bukti_model`), bentuk formula FOL (`fol_model`), 18 aturan FOL (`aturan_model`), topik menguping, state planning, teks UI, pembagian, folder, kolom evaluasi. |
+| `logic/kasus/` | RNG mulberry32 (`acak`), nama tampil (`rumah`), generator kasus (`kasus`), denah dan teleport (`denah`), topik menguping (`topik`). |
+| `logic/penalaran/` | FOL dan CNF (`fol`), resolusi refutasi (`resolusi`), KB dengan TELL/ASK (`kb`), problem formulation dan A*/BFS (`planning`). |
+| `logic/agen/` | Kontrak `DetektifAI` dan `Tim` (`kontrak`), mixin bersama (`mixin`), Detektif AI v1 dan v2, baseline (polisi, penebak), tim bot, tim rekaman log, tim manusia, dan daftar `LAWAN_AI` (`daftar`). |
+| `logic/permainan/` | Aturan permainan (`permainan`): ronde, aksi, teleport, menguping, sidang, test mode, log. |
+| `logic/layar/` | Logika layar UI: `LayarPermainan` (aksi tombol, peta, catatan, trace, hasil), `LayarSidebar` (jatah game, pilihan latihan), dan teks tampilan (`teks`). |
+| `logic/evaluasi/` | Log, pembagian kasus, replay, ringkasan evaluasi, uji konsistensi, transkrip, perbandingan. |
+| `ui/` | Tampilan Streamlit: halaman, sidebar, peta, aksi, catatan, hasil, komponen. |
 | `scripts/` | Perintah: `simulasi`, `evaluasi`, `buat_pembagian`. |
 | `tests/` | Uji: `uji_konsistensi`, `uji_planning`, `uji_replay`. |
 | `app.py` | Titik masuk Streamlit. |
@@ -46,11 +49,11 @@ Satu folder satu peran, nama file `<fitur>_<peran>.py`. Aturan lengkapnya ada di
 
 ## Menambah Detektif AI baru
 
-1. Buat file `agents/<nama>_agent.py` berisi turunan `DetektifAI` (atau `AgenV1`/`AgenV2`), dan isi `mulai`,
+1. Buat file `logic/agen/<nama>.py` berisi turunan `DetektifAI` (atau `AgenV1`/`AgenV2`), dan isi `mulai`,
    `amati`, `aksi`, dan `tuduhan` sesuai kebutuhan. Agen yang bergerak dengan A* atau BFS cukup mewarisi
    `PerencanaLangkah` dan mengisi `target()`.
-2. Daftarkan kelasnya di `LAWAN_AI` (`agents/daftar_agent.py`). UI, replay, dan evaluasi otomatis ikut memakainya.
-3. Kalau perlu ikut dimainkan di playtest, tambahkan namanya ke `LAWAN` di `models/pembagian_model.py`.
+2. Daftarkan kelasnya di `LAWAN_AI` (`logic/agen/daftar.py`). UI, replay, dan evaluasi otomatis ikut memakainya.
+3. Kalau perlu ikut dimainkan di playtest, tambahkan namanya ke `LAWAN` di `model/pembagian_model.py`.
 
 ## Cara main singkat
 

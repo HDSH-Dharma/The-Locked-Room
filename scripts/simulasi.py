@@ -15,9 +15,9 @@ import os
 import sys
 import time
 
-from models.folder_model import FOLDER_HASIL
-from services.perbandingan_service import hitung_angka, teks_perbandingan
-from services.transkrip_service import pilih_kasus_demo, transkrip
+from logic.evaluasi.perbandingan import hitung_angka, teks_perbandingan
+from logic.evaluasi.transkrip import pilih_kasus_demo, transkrip
+from model.folder_model import FOLDER_HASIL
 
 # MARK: - Main
 

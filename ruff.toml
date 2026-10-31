@@ -1,0 +1,9 @@
+line-length = 130
+extend-exclude = ["logs", "hasil"]
+
+[lint]
+select = ["F", "E", "W", "B", "I"]
+
+[lint.isort]
+known-first-party = ["model", "logic", "ui", "scripts", "tests"]
+split-on-trailing-comma = false
