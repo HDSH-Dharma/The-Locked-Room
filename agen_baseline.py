@@ -14,7 +14,7 @@ Agen pembanding (baseline) dan tim simulasi.
 - AIDiam          : lawan kosong, untuk mengukur apakah tim bisa selesai dalam 7 ronde.
 """
 import random
-from kasus import ALL_WORLDS, S_IDS, R_IDS, START
+from kasus import ALL_WORLDS, S_IDS, W_IDS, R_IDS, START, World
 from agen_v1 import AgenV1, possible
 from denah import jarak, langkah_pertama, nilai_target
 
@@ -143,3 +143,27 @@ class AIDiam:
 
     def aksi(self, *a, **k):
         return None, {}
+
+
+
+class AIPolisi:
+    """Baseline polisi: langsung menuduh orang yang ditangkap dan ruangan tempat jasad
+    ditemukan, tanpa penalaran. Senjata dipilih acak, tapi selalu sama untuk kasus yang sama."""
+    nama = 'polisi'
+
+    def mulai(self, case):
+        senjata = random.Random(case['seed']).choice(W_IDS)
+        self.jawaban = World(case['arrested'], senjata, case['found'])
+        self.log = []
+
+    def amati(self, ids, ronde):
+        return []
+
+    def dengar(self, jenis, target, topik):
+        pass
+
+    def aksi(self, pos, searched, asked, punya_tp=False):
+        return None, {}
+
+    def tuduhan(self):
+        return self.jawaban
