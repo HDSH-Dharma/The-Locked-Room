@@ -6,8 +6,10 @@ kasus yang sama selalu menghasilkan kasus yang sama. Sejak aturan proposal (kesa
 pernah menyebut pelaku asli), sebagian kasus berbeda dari versi web.
 
 Aturan proposal yang dipegang generator:
-- Kesaksian tidak pernah menyebut pelaku asli. Saksi jujur tidak pernah berkata "Aku yakin
-  <pelaku> pelakunya"; pelaku boleh berbohong dengan menuduh orang lain.
+- Kesaksian tidak pernah menyebut pelaku asli. Kesaksian juga tidak menyebut tersangka lain:
+  dengan aturan ini, "Aku yakin Y pelakunya" hanya bisa diucapkan pelaku (langsung membongkar
+  pelakunya) dan "Y bukan pelakunya" hanya bisa diucapkan saksi jujur. Pelaku hanya bisa
+  ditemukan dengan mencocokkan kesaksian dengan bukti lain.
 - Ruang Tamu sudah diperiksa polisi (isinya berkas polisi), jadi tidak ada bukti fisik di sana.
 
 Setiap bukti punya DUA representasi:
@@ -35,6 +37,7 @@ ROOMS = [
 TKP = ['perpus', 'dapur', 'kamar', 'taman']
 START = 'rtamu'           # Ruang Tamu: titik awal, sudah diperiksa polisi
 MAX_ROUNDS = 7
+WAKTU_KEMATIAN = '21.00–23.00'
 
 S_IDS = [s[0] for s in SUSPECTS]
 W_IDS = [w[0] for w in WEAPONS]
@@ -113,12 +116,6 @@ def statement_options(x, found):
                     fol=Atom('Dipindahkan')))
     out.append(dict(weight=1, text=f'Korban dibunuh di {f_low}, tempat jasadnya ditemukan.', f=lambda m: m.r == found,
                     fol=Atom('TKP', C[found])))
-    for y in S_IDS:
-        if y == x:
-            continue
-        out.append(dict(weight=2, text=f'{sn(y)} bukan pelakunya.', f=lambda m, y=y: m.s != y, fol=Not(Atom('Pelaku', C[y]))))
-        out.append(dict(weight=2, text=f'Aku yakin {sn(y)} pelakunya.', f=lambda m, y=y: m.s == y, fol=Atom('Pelaku', C[y]),
-                        menyebut=y))
     for w in W_IDS:
         low = wn(w).lower()
         out.append(dict(weight=1, text=f'Senjatanya bukan {low}.', f=lambda m, w=w: m.w != w, fol=Not(Atom('Senjata', C[w]))))
@@ -175,9 +172,7 @@ def _try_build(rnd):
             st = dict(text='Aku bukan pelakunya.', f=lambda m, x=x: m.s != x, fol=Not(Atom('Pelaku', C[x])))
             self_used = True
         else:
-            # Kesaksian tidak pernah menyebut pelaku asli (proposal).
-            st = weighted_pick(rnd, [o for o in statement_options(x, found)
-                                     if o['f'](sol) == honest and o.get('menyebut') != sol.s])
+            st = weighted_pick(rnd, [o for o in statement_options(x, found) if o['f'](sol) == honest])
         testimonies.append(make_testimony(x, st, loc[x]))
     models = [m for m in ALL_WORLDS if all(t['prop'](m) for t in testimonies)]
     if len(models) <= 4:
@@ -235,14 +230,14 @@ def _try_build(rnd):
                          lambda m: m.r not in wood, [Atom('NodaBasah')]))
 
     alibi_texts = [
-        lambda x: f'Struk minimarket: {x} berbelanja di luar rumah pukul 21.00–23.00.',
-        lambda x: f'Satpam kompleks: {x} mengobrol di pos jaga pukul 21.00–23.00.',
+        lambda x: f'Struk minimarket: {x} berbelanja di luar rumah pukul {WAKTU_KEMATIAN}.',
+        lambda x: f'Satpam kompleks: {x} mengobrol di pos jaga pukul {WAKTU_KEMATIAN}.',
         lambda x: f'Tiket bioskop atas nama {x}, pertunjukan pukul 20.45–23.10.',
     ]
     for y in innocents:
         pool.append(phys(pick(rnd, alibi_texts)(sn(y)), None, lambda m, y=y: m.s != y, [Atom('AdaAlibi', C[y])]))
     a, b = shuffle(rnd, innocents)[:2]
-    pool.append(phys(f'Foto di ponsel yang tertinggal: {sn(a)} dan {sn(b)} bermain catur bersama pukul 21.00–23.00.', 'rmakan',
+    pool.append(phys(f'Foto di ponsel yang tertinggal: {sn(a)} dan {sn(b)} bermain catur bersama pukul {WAKTU_KEMATIAN}.', 'rmakan',
                      lambda m, a=a, b=b: m.s not in (a, b), [Atom('AdaAlibi', C[a]), Atom('AdaAlibi', C[b])]))
     fp = shuffle(rnd, [sol.s, pick(rnd, innocents)])
     pool.append(phys(f'Jejak sepatu ukuran 43 di dekat TKP. Hanya {sn(fp[0])} dan {sn(fp[1])} yang memakai ukuran itu.', None,
