@@ -1,0 +1,132 @@
+"""
+Evaluasi: semua log test mode diputar ulang melawan setiap Detektif AI di daftar_ai.py.
+
+  python evaluasi.py      -> hasil/evaluasi.csv (semua baris) dan hasil/evaluasi.md (tabel laporan)
+"""
+import csv
+import math
+import os
+from collections import Counter, defaultdict
+
+from daftar_ai import LAWAN_AI
+from replay import muat_log, replay
+
+FOLDER_HASIL = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'hasil')
+MENANG_PEMAIN = ('tim', 'ai-salah')     # tuduhan AI yang salah membuat AI kalah (proposal)
+MENANG_AI = ('ai', 'tim-salah')
+KOLOM_LAPORAN = [('pemain_menang', 'Pemain menang'), ('ai_menang', 'AI menang'), ('seri', 'Seri'),
+                 ('presisi_tuduhan', 'Presisi tuduhan AI'), ('ronde_ai_menang', 'Ronde saat AI menang'),
+                 ('aksi_ai', 'Aksi AI'), ('presisi_useless', 'Presisi useless'), ('recall_useless', 'Recall useless'),
+                 ('konflik_teleport', 'Konflik teleport')]
+
+
+# ---------------------------------------------------------------- angka dasar
+def moe(p, n):
+    """Margin of error 95% untuk proporsi p dari n game."""
+    return 1.96 * math.sqrt(p * (1 - p) / n) if n else 0
+
+
+def persen(k, n):
+    return f'{100 * k / n:.1f}% ± {100 * moe(k / n, n):.1f}' if n else '-'
+
+
+def rasio(pembilang, penyebut, format_angka='{:.1f}%', skala=100):
+    return format_angka.format(skala * pembilang / penyebut) if penyebut else '-'
+
+
+# ---------------------------------------------------------------- replay
+def baca_log():
+    """Log test mode di logs/ (logs/latihan/ tidak ikut)."""
+    return [log for _, log in muat_log() if log.get('mode') == 'uji']
+
+
+def jalankan(logs):
+    """Satu baris per (log, Detektif AI)."""
+    return [_baris_replay(log, nama, buat_agen()) for log in logs for nama, buat_agen in LAWAN_AI.items()]
+
+
+def _baris_replay(log, nama, agen):
+    game, hasil, konflik = replay(log, agen)
+    label = [(e['relevan'], game.case['by_id'][e['id']]['relevant']) for e in getattr(agen, 'log', [])]
+    return dict(seed=log['seed'], pemain=log['pemain'], ai_live=log['ai_live'], ai=nama, tipe=hasil['tipe'],
+                ronde=hasil['ronde'], aksi_ai=game.ai_aksi, konflik_teleport=konflik, label=label)
+
+
+# ---------------------------------------------------------------- ringkasan per AI
+def ringkas(baris):
+    per_ai = defaultdict(list)
+    for b in baris:
+        per_ai[b['ai']].append(b)
+    return {nama: ringkas_ai(rows) for nama, rows in per_ai.items()}
+
+
+def ringkas_ai(rows):
+    n = len(rows)
+    tipe = Counter(b['tipe'] for b in rows)
+    presisi_useless, recall_useless = _presisi_recall_useless(rows)
+    return dict(
+        n=n,
+        pemain_menang=persen(sum(tipe[t] for t in MENANG_PEMAIN), n),
+        ai_menang=persen(sum(tipe[t] for t in MENANG_AI), n),
+        seri=persen(tipe['vonis'], n),
+        presisi_tuduhan=rasio(tipe['ai'], tipe['ai'] + tipe['ai-salah']),
+        ronde_ai_menang=_rata_ronde_ai_menang(rows),
+        aksi_ai=f'{sum(b["aksi_ai"] for b in rows) / n:.1f}',
+        presisi_useless=presisi_useless,
+        recall_useless=recall_useless,
+        konflik_teleport=sum(b['konflik_teleport'] for b in rows))
+
+
+def _rata_ronde_ai_menang(rows):
+    ronde = [b['ronde'] for b in rows if b['tipe'] == 'ai']
+    return rasio(sum(ronde), len(ronde), '{:.2f}', skala=1)
+
+
+def _presisi_recall_useless(rows):
+    """Kelas positif = bukti tidak berguna. Pasangan label = (penilaian AI, kebenaran generator)."""
+    pasangan = [p for b in rows for p in b['label']]
+    tp = sum(1 for pred, benar in pasangan if not pred and not benar)
+    fp = sum(1 for pred, benar in pasangan if not pred and benar)
+    fn = sum(1 for pred, benar in pasangan if pred and not benar)
+    return rasio(tp, tp + fp), rasio(tp, tp + fn)
+
+
+def per_pemain(baris, ai='v2'):
+    rows = defaultdict(list)
+    for b in baris:
+        if b['ai'] == ai:
+            rows[b['pemain']].append(b)
+    return {p: persen(sum(b['tipe'] in MENANG_PEMAIN for b in rs), len(rs)) for p, rs in sorted(rows.items())}
+
+
+# ---------------------------------------------------------------- keluaran
+def tulis_csv(baris, path):
+    with open(path, 'w', newline='', encoding='utf-8') as f:
+        writer = csv.DictWriter(f, fieldnames=[k for k in baris[0] if k != 'label'], extrasaction='ignore')
+        writer.writeheader()
+        writer.writerows(baris)
+
+
+def tabel_markdown(ringkasan, pemain):
+    n = next(iter(ringkasan.values()))['n']
+    baris = [f'# Evaluasi replay ({n} log test mode)\n',
+             '| AI | ' + ' | '.join(judul for _, judul in KOLOM_LAPORAN) + ' |',
+             '|---' * (len(KOLOM_LAPORAN) + 1) + '|']
+    baris += [f'| {nama} | ' + ' | '.join(str(r[k]) for k, _ in KOLOM_LAPORAN) + ' |' for nama, r in ringkasan.items()]
+    baris += ['\n## Pemain menang melawan v2, per pemain\n', '| Pemain | Pemain menang |', '|---|---|']
+    baris += [f'| {p} | {v} |' for p, v in pemain.items()]
+    return '\n'.join(baris)
+
+
+def main():
+    baris = jalankan(baca_log())
+    os.makedirs(FOLDER_HASIL, exist_ok=True)
+    tulis_csv(baris, os.path.join(FOLDER_HASIL, 'evaluasi.csv'))
+    teks = tabel_markdown(ringkas(baris), per_pemain(baris))
+    with open(os.path.join(FOLDER_HASIL, 'evaluasi.md'), 'w', encoding='utf-8') as f:
+        f.write(teks + '\n')
+    print(teks)
+
+
+if __name__ == '__main__':
+    main()

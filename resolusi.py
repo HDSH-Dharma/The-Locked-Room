@@ -11,6 +11,8 @@ Strategi yang dipakai (semuanya tetap langkah resolusi biasa):
                          supaya pencarian tidak melebar ke hal yang tidak ditanyakan.
 3. Klausa terpendek dulu.
 Setiap langkah dicatat (induk kiri, induk kanan, hasil) sehingga bukti bisa ditampilkan.
+Literal dan klausa diproses dalam urutan tetap (sorted), jadi jumlah langkah resolusi sama
+persis di setiap run. Tanpa ini urutan set Python berubah-ubah antar-run.
 """
 import heapq
 from collections import defaultdict, deque
@@ -18,7 +20,7 @@ from fol import clause_str, is_tautology
 
 
 class Batas(Exception):
-    pass
+    """Jumlah langkah resolusi melewati batas; query dianggap tidak terjawab (hasil None)."""
 
 
 class Prover:
@@ -47,15 +49,15 @@ class Prover:
         self.recs[cid] = (lits, label, parents, support)
         self.by_lits[lits] = cid
         self.active.add(cid)
-        for l in lits:
-            self.occ[l].add(cid)
+        for lit in sorted(lits):
+            self.occ[lit].add(cid)
         return cid
 
     def _off(self, cid):
         if cid in self.active:
             self.active.discard(cid)
-            for l in self.recs[cid][0]:
-                self.occ[l].discard(cid)
+            for lit in self.recs[cid][0]:
+                self.occ[lit].discard(cid)
 
     def _resolve(self, a, b, lits):
         self.steps += 1
@@ -66,37 +68,49 @@ class Prover:
 
     # ---------- resolusi unit ----------
     def _propagate(self, ids):
-        q = deque(ids)
-        while q:
-            cid = q.popleft()
+        """Resolusi unit sampai tidak ada perubahan. Mengembalikan id klausa kosong, atau None."""
+        antre = deque(ids)
+        while antre:
+            cid = antre.popleft()
             if cid not in self.active:
                 continue
             lits = self.recs[cid][0]
             if not lits:
                 return cid
-            if len(lits) > 1 and any(self.units.get(a, (None,))[0] == p for a, p in lits):
-                self._off(cid)          # tertutup oleh fakta yang sudah diketahui
-                continue
-            contra = [(a, p) for a, p in lits if a in self.units and self.units[a][0] != p]
-            if contra:
-                cur, cur_lits = cid, lits
-                for a, p in contra:
-                    uid = self.units[a][1]
-                    cur_lits = cur_lits - {(a, p)}
-                    cur = self._resolve(cur, uid, cur_lits)
+            if len(lits) > 1 and self._tertutup_fakta(lits):
                 self._off(cid)
-                q.append(cur)
                 continue
-            if len(lits) == 1:
-                a, p = next(iter(lits))
-                if a in self.units:
-                    continue
-                self.units[a] = (p, cid)
-                q.extend(self.occ[(a, not p)])
-                for other in list(self.occ[(a, p)]):
-                    if other != cid:
-                        self._off(other)
+            bertentangan = [(a, p) for a, p in sorted(lits) if a in self.units and self.units[a][0] != p]
+            if bertentangan:
+                antre.append(self._buang_literal_bertentangan(cid, lits, bertentangan))
+            elif len(lits) == 1:
+                self._catat_fakta(cid, lits, antre)
         return None
+
+    def _tertutup_fakta(self, lits):
+        """Klausa sudah pasti benar karena salah satu literalnya adalah fakta yang diketahui."""
+        return any(self.units.get(a, (None,))[0] == p for a, p in lits)
+
+    def _buang_literal_bertentangan(self, cid, lits, bertentangan):
+        """Resolusikan klausa dengan setiap fakta yang bertentangan; klausa lama dinonaktifkan."""
+        cur, cur_lits = cid, lits
+        for a, p in bertentangan:
+            cur_lits = cur_lits - {(a, p)}
+            cur = self._resolve(cur, self.units[a][1], cur_lits)
+        self._off(cid)
+        return cur
+
+    def _catat_fakta(self, cid, lits, antre):
+        """Klausa satu literal menjadi fakta: klausa yang memuat komplemennya diproses ulang,
+        klausa lain yang memuat literal ini sudah pasti benar dan dinonaktifkan."""
+        a, p = next(iter(lits))
+        if a in self.units:
+            return
+        self.units[a] = (p, cid)
+        antre.extend(sorted(self.occ[(a, not p)]))
+        for other in list(self.occ[(a, p)]):
+            if other != cid:
+                self._off(other)
 
     # ---------- salin keadaan untuk satu query ----------
     def _fork(self):
@@ -148,8 +162,8 @@ class Prover:
 
     def _subsumed(self, r):
         """Apakah ada klausa aktif yang merupakan himpunan bagian dari r?"""
-        for l in r:
-            for cid in self.occ.get(l, ()):
+        for lit in sorted(r):
+            for cid in sorted(self.occ.get(lit, ())):
                 c = self.recs[cid][0]
                 if len(c) <= len(r) and c <= r:
                     return cid
@@ -165,7 +179,8 @@ class Prover:
 
     # ---------- set of support ----------
     def _sos(self):
-        heap = [(len(self.recs[i][0]), i) for i in self.active if self.recs[i][3]]
+        """Resolusi umum dengan strategi set of support, klausa terpendek dulu."""
+        heap = [(len(self.recs[i][0]), i) for i in sorted(self.active) if self.recs[i][3]]
         heapq.heapify(heap)
         done = set()
         while heap:
@@ -173,37 +188,57 @@ class Prover:
             if g not in self.active or g in done:
                 continue
             done.add(g)
-            g_lits = self.recs[g][0]
-            for l in g_lits:
-                comp = (l[0], not l[1])
-                for d in list(self.occ.get(comp, ())):
-                    if d not in self.active or g not in self.active:
-                        continue
-                    r = (g_lits - {l}) | (self.recs[d][0] - {comp})
-                    if is_tautology(r):
-                        continue
-                    if r in self.by_lits:
-                        self._promote(self.by_lits[r], heap)
-                        continue
-                    if any(self.units.get(a, (None,))[0] == p for a, p in r):
-                        continue
-                    sub = self._subsumed(r)
-                    if sub is not None:
-                        self._promote(sub, heap)
-                        continue
-                    nid = self._resolve(g, d, r)
-                    if not r:
-                        return nid
-                    if len(r) == 1:
-                        first = self.next_id
-                        e = self._propagate([nid])
-                        if e is not None:
-                            return e
-                        # klausa baru hasil resolusi unit juga masuk set of support
-                        for cid in range(first, self.next_id):
-                            if cid in self.active and self.recs[cid][3]:
-                                heapq.heappush(heap, (len(self.recs[cid][0]), cid))
-                    heapq.heappush(heap, (len(r), nid))
+            empty = self._resolusi_dengan_pasangan(g, heap)
+            if empty is not None:
+                return empty
+        return None
+
+    def _resolusi_dengan_pasangan(self, g, heap):
+        """Resolusikan klausa g dengan setiap klausa aktif yang memuat komplemen salah satu literalnya."""
+        g_lits = self.recs[g][0]
+        for lit in sorted(g_lits):
+            comp = (lit[0], not lit[1])
+            for d in sorted(self.occ.get(comp, ())):
+                if d not in self.active or g not in self.active:
+                    continue
+                empty = self._coba_resolvent(g, d, (g_lits - {lit}) | (self.recs[d][0] - {comp}), heap)
+                if empty is not None:
+                    return empty
+        return None
+
+    def _coba_resolvent(self, g, d, r, heap):
+        """Simpan resolvent r kalau membawa informasi baru. Mengembalikan id klausa kosong kalau ketemu."""
+        if is_tautology(r):
+            return None
+        if r in self.by_lits:                  # resolvent sudah ada di KB
+            self._promote(self.by_lits[r], heap)
+            return None
+        if self._tertutup_fakta(r):
+            return None
+        subsumer = self._subsumed(r)
+        if subsumer is not None:               # ada klausa aktif yang lebih umum
+            self._promote(subsumer, heap)
+            return None
+        nid = self._resolve(g, d, r)
+        if not r:
+            return nid
+        if len(r) == 1:
+            empty = self._sebarkan_fakta_baru(nid, heap)
+            if empty is not None:
+                return empty
+        heapq.heappush(heap, (len(r), nid))
+        return None
+
+    def _sebarkan_fakta_baru(self, nid, heap):
+        """Resolvent satu literal langsung disebarkan dengan resolusi unit; klausa baru yang
+        lahir dari situ juga masuk set of support."""
+        first = self.next_id
+        empty = self._propagate([nid])
+        if empty is not None:
+            return empty
+        for cid in range(first, self.next_id):
+            if cid in self.active and self.recs[cid][3]:
+                heapq.heappush(heap, (len(self.recs[cid][0]), cid))
         return None
 
     # ---------- bukti ----------

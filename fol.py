@@ -221,4 +221,4 @@ def lit_str(lit):
 def clause_str(clause):
     if not clause:
         return '□ (klausa kosong)'
-    return ' ∨ '.join(lit_str(l) for l in sorted(clause, key=lambda l: (l[0], not l[1])))
+    return ' ∨ '.join(lit_str(lit) for lit in sorted(clause, key=lambda lit: (lit[0], not lit[1])))

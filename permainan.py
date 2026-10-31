@@ -1,5 +1,5 @@
 """
-Aturan permainan Rumah Terkunci untuk simulasi.
+Aturan permainan Rumah Terkunci (engine).
 
 Satu ronde:
 1. Tim: detektif 1, 2, 3 masing-masing 1 aksi (pindah / geledah / interogasi / teleport).
@@ -9,9 +9,10 @@ Satu ronde:
    jadi tidak bisa digeledah. Aturan ini sama untuk tim dan AI.
 2. Detektif AI: jumlah aksi sesuai pola level. Menuduh hanya kalau prasyarat terpenuhi.
 Setelah ronde 7: sidang. Tim boleh menuduh sekali lagi; kalau tidak, hasilnya seri
-(hakim memvonis orang yang ditangkap polisi).
+(hakim memvonis orang yang ditangkap polisi). Tuduhan pertama yang benar menang, tuduhan
+yang salah kalah.
 
-Fitur tambahan (bisa dimatikan supaya aturan lama tetap bisa diuji):
+Fitur tambahan (bisa dimatikan, misalnya untuk simulasi tanpa teleport dan menguping):
 - denah    : '9', '12', atau '16' ruangan
 - teleport : 1 teleport tersembunyi di ruangan berisi bukti; milik pihak pertama yang
              menggeledah ruangan itu; lompat serong 1-2 kotak, 1 aksi, sekali pakai
@@ -21,35 +22,23 @@ Fitur tambahan (bisa dimatikan supaya aturan lama tetap bisa diuji):
              lanjut sampai tim menuduh atau sidang setelah ronde 7.
 
 Dua cara menjalankan:
-- jalan()  : seluruh permainan sekaligus, tim berupa objek agen (TimBot, TimRekaman).
+- jalan()  : seluruh permainan sekaligus, tim berupa objek Tim (TimBot, TimRekaman).
 - per langkah untuk UI: mulai(), lalu aksi_tim(d, aksi) tiga kali, giliran_ai(),
   ulangi sampai sidang. tuduh_tim(jawaban) boleh kapan saja di giliran tim atau saat sidang.
+Keduanya memakai giliran AI yang sama (_jalankan_giliran_ai), jadi hasilnya selalu sama.
 """
+import random
 from collections import Counter
-from kasus import generate_case, START, MAX_ROUNDS, S_IDS, World, neighbors, sn, wn, rn
+
 from denah import pakai_denah, lengkapi, serong
+from kasus import generate_case, START, MAX_ROUNDS, S_IDS, World, neighbors
 
 LEVELS = {'mudah': [2], 'normal': [2, 2, 3], 'sulit': [2, 3], 'ahli': [3]}
-LEVELS_LAMA = {'mudah': [2], 'normal': [3, 2], 'sulit': [3]}
-
-
-def teks_aksi(act):
-    kind, arg = act
-    if kind == 'pindah':
-        return f'pindah ke {rn(arg)}'
-    if kind == 'teleport':
-        return f'teleport ke {rn(arg)}'
-    if kind == 'geledah':
-        return f'menggeledah {rn(arg)}'
-    return f'menginterogasi {sn(arg)}'
-
-
-def teks_jawaban(m):
-    return f'{sn(m.s)} · {wn(m.w)} · {rn(m.r)}'
+JUMLAH_DETEKTIF = 3
 
 
 class Permainan:
-    def __init__(self, seed, ai, tim=None, level='normal', denah='9', teleport=False, menguping=False,
+    def __init__(self, seed, ai, tim=None, *, level='normal', denah='9', teleport=False, menguping=False,
                  pola=None, uji=False):
         pakai_denah(denah)
         self.case = lengkapi(generate_case(seed))
@@ -59,7 +48,7 @@ class Permainan:
         self.uji = uji
         self.aksi_ronde = 0       # aksi tim yang sudah dipakai di ronde ini (mode per langkah)
         self.sidang_dibuka = False
-        self.ai_selesai = False   # test mode: AI sudah menemukan jawaban dan berhenti bergerak
+        self.ai_selesai = False   # test mode: AI sudah menuduh diam-diam, tapi tetap bergerak
         self.tuduhan_ai = None    # test mode: tuduhan AI yang disembunyikan
         self.ronde = 1
         self.hasil = None
@@ -68,7 +57,7 @@ class Permainan:
         self.ai_pos = START
         self.ai_searched, self.ai_asked = set(), set()
         self.ai_aksi = 0
-        self.tim_pos = {1: START, 2: START, 3: START}
+        self.tim_pos = {d: START for d in range(1, JUMLAH_DETEKTIF + 1)}
         self.tim_searched, self.tim_asked = set(), set()
         self.tim_aksi_n = 0
         self.tp_room = self.case['teleport'] if teleport else None
@@ -88,92 +77,99 @@ class Permainan:
             self.log(siapa, 'teleport', dict(room=room))
 
     def _kuping(self, pelaku, jenis, target, room, ids):
+        """Lawan yang berada di ruangan yang sama mendengar topik bukti, bukan isinya."""
         if not self.menguping:
             return
         topik = [self.case['by_id'][i]['topik'] for i in ids]
+        data = dict(jenis=jenis, target=target, topik=topik)
         if pelaku == 'tim' and self.ai_pos == room:
             self.ai.dengar(jenis, target, topik)
             self.stat['ai_menguping'] += 1
-            self.log('ai', 'menguping', dict(jenis=jenis, target=target, topik=topik))
+            self.log('ai', 'menguping', data)
         elif pelaku == 'ai' and self.tim and room in self.tim_pos.values():
             self.tim.dengar(jenis, target, topik)
             self.stat['tim_menguping'] += 1
-            self.log('tim', 'menguping', dict(jenis=jenis, target=target, topik=topik))
+            self.log('tim', 'menguping', data)
+
+    # ---------- geledah dan interogasi (sama untuk tim dan AI) ----------
+    def _geledah(self, pelaku, ruang, pemilik_teleport):
+        ids = list(self.case['room_clues'][ruang])
+        self._ambil_teleport(ruang, pemilik_teleport)
+        self._kuping(pelaku, 'geledah', ruang, ruang, ids)
+        return ids
+
+    def _interogasi(self, pelaku, tersangka, ruang):
+        ids = [self.case['testimony_of'][tersangka]]
+        self._kuping(pelaku, 'interogasi', tersangka, ruang, ids)
+        return ids
 
     # ---------- aksi tim ----------
     def tim_aksi(self, d, act):
-        kind, arg = act
-        pos = self.tim_pos[d]
-        found = []
-        if kind == 'pindah':
-            assert arg in neighbors(pos)
-            self.tim_pos[d] = arg
-        elif kind == 'teleport':
-            assert self.tp_holder == ('tim', d) and arg in serong(pos)
-            self.tim_pos[d] = arg
-            self.tp_holder = 'terpakai'
-            self.stat['tp_dipakai_tim'] += 1
-        elif kind == 'geledah':
-            assert arg == pos and arg != START and arg not in self.tim_searched
-            self.tim_searched.add(arg)
-            found = list(self.case['room_clues'][arg])
-            self._ambil_teleport(arg, ('tim', d))
-            self._kuping('tim', 'geledah', arg, pos, found)
-        else:
-            assert self.case['loc'][arg] == pos and arg not in self.tim_asked
-            self.tim_asked.add(arg)
-            found = [self.case['testimony_of'][arg]]
-            self._kuping('tim', 'interogasi', arg, pos, found)
+        """Jalankan satu aksi detektif d tanpa cek giliran. Mengembalikan id bukti yang ditemukan."""
+        jenis, target = act
+        found = getattr(self, f'_tim_{jenis}')(d, target)
         self.tim_aksi_n += 1
         self.log('tim', 'aksi', dict(d=d, act=act, found=found))
         return found
 
+    def _tim_pindah(self, d, ruang):
+        assert ruang in neighbors(self.tim_pos[d])
+        self.tim_pos[d] = ruang
+        return []
+
+    def _tim_teleport(self, d, ruang):
+        assert self.tp_holder == ('tim', d) and ruang in serong(self.tim_pos[d])
+        self.tim_pos[d] = ruang
+        self.tp_holder = 'terpakai'
+        self.stat['tp_dipakai_tim'] += 1
+        return []
+
+    def _tim_geledah(self, d, ruang):
+        assert ruang == self.tim_pos[d] and ruang != START and ruang not in self.tim_searched
+        self.tim_searched.add(ruang)
+        return self._geledah('tim', ruang, ('tim', d))
+
+    def _tim_interogasi(self, d, tersangka):
+        pos = self.tim_pos[d]
+        assert self.case['loc'][tersangka] == pos and tersangka not in self.tim_asked
+        self.tim_asked.add(tersangka)
+        return self._interogasi('tim', tersangka, pos)
+
     def tuduh(self, siapa, guess):
-        sol = self.case['sol']
-        benar = guess == sol
+        benar = guess == self.case['sol']
         tipe = {'tim': 'tim' if benar else 'tim-salah', 'ai': 'ai' if benar else 'ai-salah'}[siapa]
         self.hasil = dict(tipe=tipe, tebakan=guess, ronde=self.ronde)
         self.log(siapa, 'tuduh', dict(guess=guess, benar=benar))
 
-    # ---------- jalannya permainan ----------
+    def _vonis_hakim(self):
+        """Tidak ada yang menuduh sampai sidang: hakim memvonis orang yang ditangkap polisi (seri)."""
+        self.hasil = dict(tipe='vonis', tebakan=None, ronde=MAX_ROUNDS)
+        self.log('hakim', 'vonis', dict(arrested=self.case['arrested']))
+
+    # ---------- seluruh permainan sekaligus ----------
     def jalan(self):
-        case = self.case
-        dossier = [c['id'] for c in case['clues'] if c['kind'] == 'berkas']
-        self.ai.mulai(case)
-        self.log('ai', 'amati', self.ai.amati(dossier, 1))
-        if self.tim:
-            self.tim.mulai(case)
-            self.tim.amati(dossier)
-        pattern = self.pola
+        self.mulai()
         for ronde in range(1, MAX_ROUNDS + 1):
             self.ronde = ronde
             if self.tim:
                 self.tim.giliran(self)
                 if self.hasil:
                     return self.hasil
-            for _ in range(pattern[(ronde - 1) % len(pattern)]):
-                if self._ai_coba_tuduh():
-                    return self.hasil
-                act, info = self.ai.aksi(self.ai_pos, self.ai_searched, self.ai_asked,
-                                         punya_tp=self.tp_holder == 'ai')
-                if act is None:
-                    self.log('ai', 'tunggu', {})
-                    break
-                self._ai_jalankan(act, info, ronde)
-            if self._ai_coba_tuduh():
+            self._jalankan_giliran_ai()
+            if self.hasil:
                 return self.hasil
-        # sidang
+        return self._sidang()
+
+    def _sidang(self):
         self.ronde = MAX_ROUNDS
-        if self.tim:
-            g = self.tim.sidang()
-            if g:
-                self.tuduh('tim', g)
-                return self.hasil
-        self.hasil = dict(tipe='vonis', tebakan=None, ronde=MAX_ROUNDS)
-        self.log('hakim', 'vonis', dict(arrested=case['arrested']))
+        jawaban = self.tim.sidang() if self.tim else None
+        if jawaban:
+            self.tuduh('tim', jawaban)
+        else:
+            self._vonis_hakim()
         return self.hasil
 
-    # ---------- jalannya permainan per langkah (untuk UI) ----------
+    # ---------- per langkah (UI) ----------
     def mulai(self):
         """Awal permainan: AI dan tim membaca berkas polisi. Mengembalikan id berkas."""
         dossier = [c['id'] for c in self.case['clues'] if c['kind'] == 'berkas']
@@ -187,7 +183,7 @@ class Permainan:
 
     def giliran_tim(self):
         """Detektif yang sedang jalan (1, 2, 3), atau None kalau giliran tim sudah habis."""
-        if self.hasil or self.sidang_dibuka or self.aksi_ronde >= 3:
+        if self.hasil or self.sidang_dibuka or self.aksi_ronde >= JUMLAH_DETEKTIF:
             return None
         return self.aksi_ronde + 1
 
@@ -213,27 +209,17 @@ class Permainan:
         """Giliran Detektif AI setelah 3 aksi tim, lalu pindah ke ronde berikutnya atau sidang.
         Mengembalikan daftar (posisi AI sebelum aksi, aksi) untuk ditampilkan UI."""
         assert not self.hasil and not self.sidang_dibuka
-        langkah = []
-        if not self.ai_selesai:
-            for _ in range(self.pola[(self.ronde - 1) % len(self.pola)]):
-                if self._ai_coba_tuduh():
-                    break
-                act, info = self.ai.aksi(self.ai_pos, self.ai_searched, self.ai_asked,
-                                         punya_tp=self.tp_holder == 'ai')
-                if act is None:
-                    self.log('ai', 'tunggu', {})
-                    break
-                langkah.append((self.ai_pos, act))
-                self._ai_jalankan(act, info, self.ronde)
-            if not self.hasil and not self.ai_selesai:
-                self._ai_coba_tuduh()
+        langkah = self._jalankan_giliran_ai()
         if not self.hasil:
-            if self.ronde < MAX_ROUNDS:
-                self.ronde += 1
-                self.aksi_ronde = 0
-            else:
-                self.sidang_dibuka = True
+            self._lanjut_ronde()
         return langkah
+
+    def _lanjut_ronde(self):
+        if self.ronde < MAX_ROUNDS:
+            self.ronde += 1
+            self.aksi_ronde = 0
+        else:
+            self.sidang_dibuka = True
 
     def tuduh_tim(self, jawaban):
         """Tuduhan tim: (pelaku, senjata, TKP). Saat sidang, None berarti tim tidak menuduh
@@ -241,8 +227,7 @@ class Permainan:
         assert not self.hasil
         if jawaban is None:
             assert self.sidang_dibuka, 'tim hanya boleh tidak menuduh saat sidang'
-            self.hasil = dict(tipe='vonis', tebakan=None, ronde=MAX_ROUNDS)
-            self.log('hakim', 'vonis', dict(arrested=self.case['arrested']))
+            self._vonis_hakim()
         else:
             self.tuduh('tim', World(*jawaban))
         return self.hasil
@@ -259,52 +244,103 @@ class Permainan:
             return dict(tipe='ai' if t['benar'] else 'ai-salah', tebakan=t['tebakan'], ronde=t['ronde'])
         return self.hasil
 
-    def ke_log(self, pemain, ai_live, durasi_detik, tanda_bukti=True):
-        """Isi file log JSON untuk replay (format hasil rapat, ditambah mode, tanda_bukti, sidang)."""
-        tuduhan = next((dict(ronde=r, jawaban=list(data['guess']), sidang=self.sidang_dibuka)
-                        for r, siapa, jenis, data in self.events if siapa == 'tim' and jenis == 'tuduh'), None)
+    # ---------- log untuk replay ----------
+    def ke_log(self, pemain, ai_live, durasi_detik):
+        """Isi file log JSON untuk replay. Field yang dibaca replay dan evaluasi: seed, pemain,
+        ai_live, mode, aksi_tim, tuduhan_tim, hasil."""
         return dict(seed=self.case['seed'], pemain=pemain, ai_live=ai_live, durasi_detik=round(durasi_detik),
-                    mode='uji' if self.uji else 'normal', tanda_bukti=tanda_bukti,
-                    aksi_tim=[[r, data['d'], list(data['act'])]
-                              for r, siapa, jenis, data in self.events if siapa == 'tim' and jenis == 'aksi'],
-                    tuduhan_tim=tuduhan, hasil=self.hasil_akhir()['tipe'] if self.hasil else None)
+                    mode='uji' if self.uji else 'normal', aturan='proposal',
+                    aksi_tim=self._aksi_tim_tercatat(), tuduhan_tim=self._tuduhan_tim_tercatat(),
+                    hasil=self.hasil_akhir()['tipe'] if self.hasil else None)
+
+    def _aksi_tim_tercatat(self):
+        return [[r, data['d'], list(data['act'])] for r, siapa, jenis, data in self.events
+                if siapa == 'tim' and jenis == 'aksi']
+
+    def _tuduhan_tim_tercatat(self):
+        return next((dict(ronde=r, jawaban=list(data['guess']), sidang=self.sidang_dibuka)
+                     for r, siapa, jenis, data in self.events if siapa == 'tim' and jenis == 'tuduh'), None)
+
+    # ---------- giliran AI (dipakai jalan() dan giliran_ai()) ----------
+    def _jalankan_giliran_ai(self):
+        """Semua aksi AI di ronde ini. Mengembalikan daftar (posisi AI sebelum aksi, aksi)."""
+        langkah = []
+        for i in range(self._jatah_aksi_ai()):
+            if self._ai_menuduh_dan_berhenti():
+                break
+            act, info = self._aksi_ai_berikutnya(i)
+            if act is None:
+                break
+            langkah.append((self.ai_pos, act))
+            self._ai_jalankan(act, info)
+        if not self.hasil and not self.ai_selesai:
+            self._ai_coba_tuduh()
+        return langkah
+
+    def _jatah_aksi_ai(self):
+        return self.pola[(self.ronde - 1) % len(self.pola)]
+
+    def _ai_menuduh_dan_berhenti(self):
+        """Mode normal: tuduhan AI mengakhiri game. Test mode: tuduhan disimpan diam-diam dan AI
+        tetap memakai semua aksinya, supaya pemain tidak bisa menebak bahwa AI sudah menuduh."""
+        return not self.ai_selesai and self._ai_coba_tuduh() and not self.uji
+
+    def _aksi_ai_berikutnya(self, i):
+        act, info = self.ai.aksi(self.ai_pos, self.ai_searched, self.ai_asked, punya_tp=self.tp_holder == 'ai')
+        if act is not None:
+            return act, info
+        if not self.ai_selesai:
+            self.log('ai', 'tunggu', {})
+            return None, {}
+        return self._langkah_acak(i), {}
+
+    def _langkah_acak(self, i):
+        """Test mode setelah tuduhan tersembunyi: AI yang kehabisan target tetap bergerak.
+        Seed tetap per kasus, ronde, dan urutan aksi, jadi game yang sama selalu sama."""
+        rng = random.Random(self.case['seed'] * 100 + self.ronde * 10 + i)
+        return 'pindah', rng.choice(neighbors(self.ai_pos))
 
     def _ai_coba_tuduh(self):
-        g = self.ai.tuduhan()
-        if g:
-            if self.uji:
-                # Test mode: tuduhan disimpan diam-diam, AI berhenti, tim tetap lanjut bermain.
-                if not self.tuduhan_ai:
-                    self.tuduhan_ai = dict(tebakan=g, ronde=self.ronde, benar=g == self.case['sol'])
-                    self.log('ai', 'tuduh-tersembunyi', dict(guess=g, benar=g == self.case['sol']))
-                self.ai_selesai = True
-                return True
-            self.tuduh('ai', g)
-            return True
-        return False
+        jawaban = self.ai.tuduhan()
+        if not jawaban:
+            return False
+        if self.uji:
+            self._simpan_tuduhan_tersembunyi(jawaban)
+        else:
+            self.tuduh('ai', jawaban)
+        return True
 
-    def _ai_jalankan(self, act, info, ronde):
-        kind, arg = act
+    def _simpan_tuduhan_tersembunyi(self, jawaban):
+        """Test mode: tuduhan pertama disimpan diam-diam, tim dan AI tetap lanjut bermain."""
+        if not self.tuduhan_ai:
+            benar = jawaban == self.case['sol']
+            self.tuduhan_ai = dict(tebakan=jawaban, ronde=self.ronde, benar=benar)
+            self.log('ai', 'tuduh-tersembunyi', dict(guess=jawaban, benar=benar))
+        self.ai_selesai = True
+
+    def _ai_jalankan(self, act, info):
+        jenis, target = act
         self.ai_aksi += 1
         self.log('ai', 'aksi', dict(act=act, info=info))
-        if kind == 'pindah':
-            assert arg in neighbors(self.ai_pos)
-            self.ai_pos = arg
-            return
-        if kind == 'teleport':
-            assert self.tp_holder == 'ai' and arg in serong(self.ai_pos)
-            self.ai_pos = arg
-            self.tp_holder = 'terpakai'
-            self.stat['tp_dipakai_ai'] += 1
-            return
-        if kind == 'geledah':
-            assert arg == self.ai_pos and arg != START and arg not in self.ai_searched
-            self.ai_searched.add(arg)
-            ids = self.case['room_clues'][arg]
-            self._ambil_teleport(arg, 'ai')
-            self._kuping('ai', 'geledah', arg, self.ai_pos, ids)
-        else:
-            self.ai_asked.add(arg)
-            ids = [self.case['testimony_of'][arg]]
-            self._kuping('ai', 'interogasi', arg, self.ai_pos, ids)
-        self.log('ai', 'amati', self.ai.amati(ids, ronde))
+        ids = getattr(self, f'_ai_{jenis}')(target)
+        if ids is not None:
+            self.log('ai', 'amati', self.ai.amati(ids, self.ronde))
+
+    def _ai_pindah(self, ruang):
+        assert ruang in neighbors(self.ai_pos)
+        self.ai_pos = ruang
+
+    def _ai_teleport(self, ruang):
+        assert self.tp_holder == 'ai' and ruang in serong(self.ai_pos)
+        self.ai_pos = ruang
+        self.tp_holder = 'terpakai'
+        self.stat['tp_dipakai_ai'] += 1
+
+    def _ai_geledah(self, ruang):
+        assert ruang == self.ai_pos and ruang != START and ruang not in self.ai_searched
+        self.ai_searched.add(ruang)
+        return self._geledah('ai', ruang, 'ai')
+
+    def _ai_interogasi(self, tersangka):
+        self.ai_asked.add(tersangka)
+        return self._interogasi('ai', tersangka, self.ai_pos)

@@ -1,40 +1,51 @@
 """
 Uji konsistensi: v1 (model checking) dan v2 (FOL + resolusi) harus menarik
 kesimpulan yang sama persis setelah setiap bukti, dalam urutan bukti acak.
+
+  python uji_konsistensi.py [jumlah_kasus] [denah]
 """
 import random
 import sys
-from kasus import generate_case
+from collections import Counter
+
 from agen_v1 import AgenV1
 from agen_v2 import AgenV2
 from denah import pakai_denah
+from kasus import generate_case
 
 
 def main(n_kasus=300, seed_awal=1, denah='9', diam=False):
     pakai_denah(denah)
     rng = random.Random(2026)
-    cek = beda = beda_rel = batas = 0
+    total = Counter()
     for seed in range(seed_awal, seed_awal + n_kasus):
-        c = generate_case(seed)
-        a1, a2 = AgenV1(), AgenV2()
-        a1.mulai(c)
-        a2.mulai(c)
-        ids = [k['id'] for k in c['clues']]
-        rng.shuffle(ids)
-        for cid in ids:
-            e1 = a1.amati([cid], 1)[0]
-            e2 = a2.amati([cid], 1)[0]
-            cek += 1
-            if a1.status() != a2.status():
-                beda += 1
-                print('BEDA kesimpulan', seed, cid, c['by_id'][cid]['text'])
-            if e1['relevan'] != e2['relevan']:
-                beda_rel += 1
-                print('BEDA relevansi', seed, cid, c['by_id'][cid]['text'])
-        batas += a2.stats['batas']
+        total.update(_bandingkan_kasus(seed, rng))
     if not diam:
-        print(f'denah {denah}: {n_kasus} kasus, {cek} pembaruan KB dicek: beda kesimpulan {beda}, beda relevansi {beda_rel}, query kena batas {batas}')
-    return cek, beda, beda_rel, batas
+        print(f'denah {denah}: {n_kasus} kasus, {total["cek"]} pembaruan KB dicek: beda kesimpulan {total["beda"]}, '
+              f'beda relevansi {total["beda_rel"]}, query kena batas {total["batas"]}')
+    return total['cek'], total['beda'], total['beda_rel'], total['batas']
+
+
+def _bandingkan_kasus(seed, rng):
+    """Beri v1 dan v2 bukti yang sama satu per satu dalam urutan acak, lalu bandingkan."""
+    case = generate_case(seed)
+    v1, v2 = AgenV1(), AgenV2()
+    v1.mulai(case)
+    v2.mulai(case)
+    ids = [k['id'] for k in case['clues']]
+    rng.shuffle(ids)
+    hitung = Counter()
+    for cid in ids:
+        e1, e2 = v1.amati([cid], 1)[0], v2.amati([cid], 1)[0]
+        hitung['cek'] += 1
+        if v1.status() != v2.status():
+            hitung['beda'] += 1
+            print('BEDA kesimpulan', seed, cid, case['by_id'][cid]['text'])
+        if e1['relevan'] != e2['relevan']:
+            hitung['beda_rel'] += 1
+            print('BEDA relevansi', seed, cid, case['by_id'][cid]['text'])
+    hitung['batas'] += v2.stats['batas']
+    return hitung
 
 
 if __name__ == '__main__':

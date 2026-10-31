@@ -1,5 +1,5 @@
 """
-Search and planning untuk Detektif AI v2: problem formulation (Lecture Note 02) dan A*.
+Search and planning Detektif AI: problem formulation (Lecture Note 02), A* (v2), dan BFS (v1).
 
 State        : (ruangan AI, ruangan yang sudah digeledah, tersangka yang sudah ditanya,
                masih memegang teleport). KB tidak berubah selama perencanaan, jadi tidak
@@ -25,7 +25,7 @@ jalankan aksi pertama, amati, perbarui KB, lalu rencanakan ulang.
 import heapq
 from collections import deque, namedtuple
 
-from kasus import START, POS, S_IDS, neighbors
+from kasus import START, POS, S_IDS, neighbors, sn, rn
 from denah import serong
 
 State = namedtuple('State', 'ruang digeledah ditanya teleport')
@@ -97,31 +97,102 @@ def astar(start, goal, h, lokasi):
             return _jejak(parent, s), expanded
         expanded += 1
         for a in actions(s, lokasi):
-            t = result(s, a)
-            if t not in best_g or g + 1 < best_g[t]:
-                best_g[t], parent[t] = g + 1, (s, a)
+            child = result(s, a)
+            if child not in best_g or g + 1 < best_g[child]:
+                best_g[child], parent[child] = g + 1, (s, a)
                 tie += 1
-                heapq.heappush(frontier, (g + 1 + h(t), -(g + 1), tie, t))
+                heapq.heappush(frontier, (g + 1 + h(child), -(g + 1), tie, child))
     return None, expanded
 
 
 def bfs(start, goal, lokasi):
-    """Pembanding untuk A* (uji_planning.py): breadth-first search dengan aksi yang sama."""
+    """Breadth-first search dengan ACTIONS dan RESULT yang sama: gerak v1, dan pembanding A* di uji_planning.py."""
     if goal(start):
         return [], 0
-    parent, q, expanded = {start: None}, deque([start]), 0
-    while q:
-        s = q.popleft()
+    parent, frontier, expanded = {start: None}, deque([start]), 0
+    while frontier:
+        s = frontier.popleft()
         expanded += 1
         for a in actions(s, lokasi):
-            t = result(s, a)
-            if t in parent:
+            child = result(s, a)
+            if child in parent:
                 continue
-            parent[t] = (s, a)
-            if goal(t):
-                return _jejak(parent, t), expanded
-            q.append(t)
+            parent[child] = (s, a)
+            if goal(child):
+                return _jejak(parent, child), expanded
+            frontier.append(child)
     return None, expanded
+
+
+def goal_info_baru(searched, asked, ruangan_target, tersangka_target):
+    """Goal test: satu informasi baru didapat, yaitu salah satu ruangan target sudah
+    digeledah atau salah satu tersangka target sudah ditanya."""
+    sudah_digeledah, sudah_ditanya = frozenset(searched), frozenset(asked)
+
+    def goal(s):
+        return bool((s.digeledah - sudah_digeledah) & ruangan_target) \
+            or bool((s.ditanya - sudah_ditanya) & tersangka_target)
+    return goal
+
+
+def rencanakan(pos, searched, asked, target, lokasi, *, punya_tp=False, algoritma='astar'):
+    """Rencana terpendek dari posisi AI ke informasi baru berikutnya (dipakai v1 dan v2).
+
+    target : (ruangan target, tersangka target). algoritma: 'astar' (v2) atau 'bfs' (v1).
+    Teleport hanya dipakai kalau rencana dengan teleport lebih pendek; selain itu disimpan.
+    Mengembalikan (rencana, node diekspansi, teleport_ditahan)."""
+    ruangan_target, tersangka_target = target
+    goal = goal_info_baru(searched, asked, ruangan_target, tersangka_target)
+    h = heuristik(list(ruangan_target) + [lokasi[x] for x in tersangka_target], goal)
+
+    def cari(start):
+        return astar(start, goal, h, lokasi) if algoritma == 'astar' else bfs(start, goal, lokasi)
+
+    start = State(pos, frozenset(searched), frozenset(asked), False)
+    plan, expanded = cari(start)
+    if not punya_tp:
+        return plan, expanded, False
+    plan_tp, expanded_tp = cari(start._replace(teleport=True))
+    plan, ditahan = _pilih_rencana(plan, plan_tp)
+    return plan, expanded + expanded_tp, ditahan
+
+
+def _pilih_rencana(tanpa_teleport, dengan_teleport):
+    """Rencana dengan teleport dipakai hanya kalau aksi pertamanya teleport dan rencananya
+    lebih pendek. Mengembalikan (rencana terpilih, teleport ditahan untuk nanti)."""
+    if not dengan_teleport or dengan_teleport[0][0] != 'teleport':
+        return tanpa_teleport, False
+    if tanpa_teleport is None or len(dengan_teleport) < len(tanpa_teleport):
+        return dengan_teleport, False
+    return tanpa_teleport, True
+
+
+def teks_rencana(plan):
+    """Rencana sebagai teks untuk trace, misalnya ['Pindah(Dapur)', 'Geledah(Dapur)']."""
+    return [f'{a.capitalize()}({sn(b) if a == "interogasi" else rn(b)})' for a, b in plan]
+
+
+class PerencanaLangkah:
+    """Mixin gerak Detektif AI: rencanakan sampai informasi baru berikutnya, jalankan aksi
+    pertamanya saja (online replanning). Subkelas menentukan ALGORITMA ('astar' atau 'bfs')
+    dan target(searched, asked) -> (ruangan target, tersangka target)."""
+    ALGORITMA = 'astar'
+
+    def target(self, searched, asked):
+        raise NotImplementedError
+
+    def aksi(self, pos, searched, asked, punya_tp=False):
+        target = self.target(searched, asked)
+        if not any(target):
+            return None, {}
+        plan, expanded, ditahan = rencanakan(pos, searched, asked, target, self.case['loc'],
+                                             punya_tp=punya_tp, algoritma=self.ALGORITMA)
+        self.stats['simpul_planner'] += expanded
+        self.stats['rencana'] += 1
+        self.stats['teleport_ditahan'] += ditahan
+        if not plan:
+            return None, {}
+        return plan[0], dict(rencana=teks_rencana(plan), simpul=expanded)
 
 
 def tampil_formulasi():
