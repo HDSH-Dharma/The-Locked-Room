@@ -117,7 +117,6 @@ def statement_options(x, found):
     for y in S_IDS:
         if y == x:
             continue
-        out.append(dict(weight=2, text=f'{sn(y)} bukan pelakunya.', f=lambda m, y=y: m.s != y, fol=Not(Atom('Pelaku', C[y]))))
         out.append(dict(weight=2, text=f'Aku yakin {sn(y)} pelakunya.', f=lambda m, y=y: m.s == y, fol=Atom('Pelaku', C[y]),
                         menyebut=y))
     for w in W_IDS:
