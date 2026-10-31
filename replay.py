@@ -1,19 +1,23 @@
-"""Replay: putar ulang aksi tim dari log playtest melawan Detektif AI mana pun."""
+"""
+Replay: putar ulang aksi tim dari log playtest melawan Detektif AI mana pun.
+
+  python replay.py      -> tes: replay melawan AI yang dilawan saat main harus memberi hasil yang sama
+"""
 import glob
 import json
+import os
 
-from agen_baseline import AIPolisi, DetektifPenebak
-from agen_v1 import AgenV1
-from agen_v2 import AgenV2
+from antarmuka import Tim
+from daftar_ai import LAWAN_AI
 from kasus import World
 from permainan import Permainan
 
-# Harus sama persis dengan LAWAN di app.py, termasuk DetektifPenebak(3, 0)
-AGEN = {'v2': AgenV2, 'v1': AgenV1, 'polisi': AIPolisi, 'penebak': lambda: DetektifPenebak(3, 0)}
+FOLDER_LOGS = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'logs')
 
 
-class TimRekaman:
+class TimRekaman(Tim):
     """Pengganti tim manusia: menjalankan ulang aksi yang tercatat di log, ronde demi ronde."""
+    nama = 'rekaman log'
 
     def __init__(self, log):
         self.per_ronde = {}
@@ -22,21 +26,20 @@ class TimRekaman:
         self.tuduhan_log = log.get('tuduhan_tim')
         self.konflik_teleport = 0
 
-    def mulai(self, case): pass
-    def amati(self, ids): pass
-    def dengar(self, jenis, target, topik): pass
-
     def giliran(self, game):
         for d, aksi in self.per_ronde.get(game.ronde, []):
-            if aksi[0] == 'teleport' and game.tp_holder != ('tim', d):
-                # Saat main, detektif d memegang teleport. Melawan AI lain, bisa jadi AI yang
-                # menemukannya lebih dulu. Aksi tim tetap diputar persis seperti di log; kejadiannya dihitung.
-                game.tp_holder = ('tim', d)
-                self.konflik_teleport += 1
-            game.tim_aksi(d, aksi)
+            self._putar_aksi(game, d, aksi)
         t = self.tuduhan_log
         if t and not t['sidang'] and t['ronde'] == game.ronde:
             game.tuduh('tim', World(*t['jawaban']))
+
+    def _putar_aksi(self, game, d, aksi):
+        if aksi[0] == 'teleport' and game.tp_holder != ('tim', d):
+            # Saat main, detektif d memegang teleport. Melawan AI lain, bisa jadi AI yang
+            # menemukannya lebih dulu. Aksi tim tetap diputar persis seperti di log; kejadiannya dihitung.
+            game.tp_holder = ('tim', d)
+            self.konflik_teleport += 1
+        game.tim_aksi(d, aksi)
 
     def sidang(self):
         t = self.tuduhan_log
@@ -44,23 +47,35 @@ class TimRekaman:
 
 
 def replay(log, agen):
+    """Mainkan ulang satu log melawan agen. Mengembalikan (game, hasil, jumlah konflik teleport)."""
     tim = TimRekaman(log)
-    g = Permainan(log['seed'], agen, tim, teleport=True, menguping=True)
-    return g, g.jalan(), tim.konflik_teleport
+    game = Permainan(log['seed'], agen, tim, teleport=True, menguping=True)
+    return game, game.jalan(), tim.konflik_teleport
+
+
+def muat_log(folder=FOLDER_LOGS):
+    """Semua log di folder (tidak termasuk subfolder latihan), urut nama file."""
+    logs = []
+    for path in sorted(glob.glob(os.path.join(folder, '*.json'))):
+        with open(path, encoding='utf-8') as f:
+            logs.append((path, json.load(f)))
+    return logs
+
+
+def uji_replay(folder=FOLDER_LOGS):
+    """Replay melawan AI yang dilawan saat main harus memberi hasil yang sama, dan replay
+    melawan semua AI lain harus jalan tanpa error."""
+    beda = konflik = 0
+    logs = muat_log(folder)
+    for path, log in logs:
+        for nama, buat_agen in LAWAN_AI.items():
+            _, hasil, k = replay(log, buat_agen())
+            konflik += k
+            if nama == log['ai_live'] and hasil['tipe'] != log['hasil']:
+                beda += 1
+                print('BEDA', path, hasil['tipe'], log['hasil'])
+    print(f'{len(logs)} log, beda dengan hasil live: {beda}, konflik teleport: {konflik}')
 
 
 if __name__ == '__main__':
-    # Tes 1: replay melawan AI yang dilawan saat main harus memberi hasil yang sama.
-    # Tes 2: replay melawan semua AI lain harus jalan tanpa error.
-    beda = konflik = 0
-    logs = sorted(glob.glob('logs/*.json'))
-    for f in logs:
-        log = json.load(open(f))
-        for nama, buat in AGEN.items():
-            _, h, k = replay(log, buat())
-            konflik += k
-            if nama == log['ai_live'] and h['tipe'] != log['hasil']:
-                beda += 1
-                print('BEDA', f, h['tipe'], log['hasil'])
-    print(f'{len(logs)} log, beda dengan hasil live: {beda}, konflik teleport: {konflik}')
-
+    uji_replay()

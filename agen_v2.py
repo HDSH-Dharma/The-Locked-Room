@@ -18,13 +18,25 @@ import time
 from fol import (Atom, Not, And, Imp, Iff, ForAll, Exists, Neq, instantiate, to_cnf, show, atom_str)
 from kasus import S_IDS, W_IDS, TKP, R_IDS, C, DOMAIN, World, sn, rn
 from resolusi import Prover
-from planning import DIPERIKSA_POLISI, rencanakan, teks_rencana
+from antarmuka import DetektifAI, PengingatTopik, kunci_topik
+from planning import DIPERIKSA_POLISI, PerencanaLangkah
 from denah import nilai_target
 
 x, y, w, r = '?x', '?y', '?w', '?r'
-P = lambda a: Atom('Pelaku', a)
-S = lambda a: Atom('Senjata', a)
-T = lambda a: Atom('TKP', a)
+
+
+# Singkatan supaya aturan di bawah terbaca seperti notasi logika di slide.
+def P(a):
+    return Atom('Pelaku', a)
+
+
+def S(a):
+    return Atom('Senjata', a)
+
+
+def T(a):
+    return Atom('TKP', a)
+
 
 # ---------- Basis pengetahuan umum (aturan berkuantor) ----------
 ATURAN = [
@@ -77,7 +89,7 @@ LATAR = [Atom('Berdarah', 'Pisau'), Atom('Berdarah', 'Vas'), Not(Atom('Berdarah'
 def _predicates(f, out):
     if f[0] == 'atom':
         out.add(f[1])
-    elif f[0] in ('not',):
+    elif f[0] == 'not':
         _predicates(f[1], out)
     elif f[0] in ('and', 'or'):
         for g in f[1]:
@@ -141,153 +153,157 @@ class KB:
         return self._rules_prover
 
     def ask(self, lit):
-        ok, p, empty = self.prover().entails(lit)
-        return ok, p, empty
+        """KB ⊨ lit? Mengembalikan (hasil, prover, id klausa kosong); hasil None = kena batas langkah."""
+        return self.prover().entails(lit)
 
     def atoms(self):
         return {a for c, _ in self.clauses for a, _ in c}
 
 
-class AgenV2:
+class AgenV2(PengingatTopik, PerencanaLangkah, DetektifAI):
     nama = 'v2 (FOL + resolusi + A*)'
+    ALGORITMA = 'astar'
 
     def __init__(self, pure=True, limit=60000):
         self.pure, self.limit = pure, limit
 
     def mulai(self, case):
-        self.case = case
+        super().mulai(case)
+        self._lupakan_topik()
         self.kb = KB(case['found'], self.pure, self.limit)
         self.known = []
-        self.state = {(cat, v): 'mungkin' for cat, v, _ in QUERY_ATOMS}
+        self.state = {(kategori, nilai): 'mungkin' for kategori, nilai, _ in QUERY_ATOMS}
         self.stats = dict(update=0, waktu_ms=0.0, query=0, langkah_resolusi=0, langkah_max=0, batas=0,
-                          simpul_planner=0, rencana=0)
+                          simpul_planner=0, rencana=0, teleport_ditahan=0)
         self.log = []
-        self.topik = {}           # hasil menguping: ('r', ruangan) / ('s', tersangka) -> [topik]
         self.terbukti = None      # World yang sudah terbukti; diisi saat fakta Terbukti di-TELL
-        self.stats.update(teleport_ditahan=0)
-
-    def dengar(self, jenis, target, topik):
-        """Menguping lawan: hanya topik bukti. Bukan fakta logika, jadi tidak di-TELL ke KB."""
-        self.topik[('r' if jenis == 'geledah' else 's', target)] = list(topik)
 
     def terbuka(self):
         """Kategori yang belum pasti menurut KB (hasil ASK yang sudah tersimpan di state)."""
-        pasti = {cat for (cat, _), st in self.state.items() if st == 'pasti'}
+        pasti = {kategori for (kategori, _), st in self.state.items() if st == 'pasti'}
         return dict(tersangka='s' not in pasti, senjata='w' not in pasti, ruangan='r' not in pasti)
 
     # ---- relevansi bukti ----
     def _relevansi(self, clue, clauses):
+        """Bukti tidak berguna kalau predikatnya tidak dipakai aturan mana pun, atau kalau
+        semua klausanya sudah tersirat dari aturan umum. Mengembalikan (relevan, alasan)."""
         preds = set()
         for f in clue['fol']:
             _predicates(f, preds)
         loose = sorted(preds - RULE_PREDICATES)
         if loose:
             return False, f'predikat {", ".join(loose)} tidak dipakai aturan mana pun'
-        rp = self.kb.rules_prover()
-        if all(rp.entails_clause(c)[0] for c, _ in clauses):
+        rules_prover = self.kb.rules_prover()
+        if all(rules_prover.entails_clause(c)[0] for c, _ in clauses):
             return False, 'sudah tersirat dari aturan umum (KB_aturan ⊨ bukti)'
         return True, ''
 
     # ---- TELL lalu ASK ----
     def amati(self, ids, ronde):
-        entries = []
-        for cid in ids:
-            if cid in self.known:
-                continue
-            self.known.append(cid)
-            clue = self.case['by_id'][cid]
-            t0 = time.perf_counter()
-            label = f'{cid} ' + (f'kesaksian {sn(clue["speaker"])}' if clue['kind'] == 'kesaksian'
-                                 else 'berkas polisi' if clue['kind'] == 'berkas' else f'bukti {rn(clue["room"])}')
-            added = []
-            for f in clue['fol']:
-                added += self.kb.tell(f, label)
-            relevan, alasan = self._relevansi(clue, added)
-            before = dict(self.state)
-            steps, nq, mx = self._update_state()
-            self._cek_terbukti()
-            dt = (time.perf_counter() - t0) * 1000
-            self.stats['update'] += 1
-            self.stats['waktu_ms'] += dt
-            self.stats['query'] += nq
-            self.stats['langkah_resolusi'] += steps
-            self.stats['langkah_max'] = max(self.stats['langkah_max'], mx)
-            baru = [(k, v) for k, v in self.state.items() if before[k] != v]
-            entries.append(dict(id=cid, fol=[show(f) for f in clue['fol']], klausa=len(added),
-                                relevan=relevan, alasan=alasan, baru=baru, waktu_ms=dt, query=nq, langkah=steps))
+        entries = [self._amati_satu(cid) for cid in ids if cid not in self.known]
         self.log.extend(entries)
         return entries
 
-    def _update_state(self):
-        total = mx = nq = 0
-        for cat, v, atom in QUERY_ATOMS:
-            if self.state[(cat, v)] != 'mungkin':
+    def _amati_satu(self, cid):
+        self.known.append(cid)
+        clue = self.case['by_id'][cid]
+        mulai = time.perf_counter()
+        added = self._tell(clue)
+        relevan, alasan = self._relevansi(clue, added)
+        sebelum = dict(self.state)
+        langkah, n_query, langkah_max = self._perbarui_status()
+        self._cek_terbukti()
+        waktu_ms = (time.perf_counter() - mulai) * 1000
+        self._catat_statistik(waktu_ms, n_query, langkah, langkah_max)
+        baru = [(k, v) for k, v in self.state.items() if sebelum[k] != v]
+        return dict(id=cid, fol=[show(f) for f in clue['fol']], klausa=len(added), relevan=relevan, alasan=alasan,
+                    baru=baru, waktu_ms=waktu_ms, query=n_query, langkah=langkah)
+
+    def _tell(self, clue):
+        """TELL setiap fakta FOL dari bukti. Mengembalikan klausa yang ditambahkan ke KB."""
+        label = f'{clue["id"]} {_sumber_bukti(clue)}'
+        added = []
+        for f in clue['fol']:
+            added += self.kb.tell(f, label)
+        return added
+
+    def _perbarui_status(self):
+        """ASK setiap atom jawaban yang belum pasti: KB ⊨ ¬atom berarti gugur, KB ⊨ atom berarti
+        pasti. Mengembalikan (total langkah resolusi, jumlah query, langkah terbanyak satu query)."""
+        langkah = []
+        for kategori, nilai, atom in QUERY_ATOMS:
+            if self.state[(kategori, nilai)] != 'mungkin':
                 continue
-            ok, p, _ = self.kb.ask((atom, False))      # KB ⊨ ¬atom ?
-            nq += 1
-            total += p.steps
-            mx = max(mx, p.steps)
-            if ok is None:
-                self.stats['batas'] += 1
-            if ok:
-                self.state[(cat, v)] = 'gugur'
-                continue
-            ok, p, _ = self.kb.ask((atom, True))       # KB ⊨ atom ?
-            nq += 1
-            total += p.steps
-            mx = max(mx, p.steps)
-            if ok is None:
-                self.stats['batas'] += 1
-            if ok:
-                self.state[(cat, v)] = 'pasti'
-        return total, nq, mx
+            if self._tanya(atom, False, langkah):
+                self.state[(kategori, nilai)] = 'gugur'
+            elif self._tanya(atom, True, langkah):
+                self.state[(kategori, nilai)] = 'pasti'
+        return sum(langkah), len(langkah), max(langkah, default=0)
+
+    def _tanya(self, atom, positif, langkah):
+        """Satu query resolusi. Jumlah langkahnya ditambahkan ke daftar langkah."""
+        ok, prover, _ = self.kb.ask((atom, positif))
+        langkah.append(prover.steps)
+        if ok is None:
+            self.stats['batas'] += 1
+        return ok
+
+    def _catat_statistik(self, waktu_ms, n_query, langkah, langkah_max):
+        self.stats['update'] += 1
+        self.stats['waktu_ms'] += waktu_ms
+        self.stats['query'] += n_query
+        self.stats['langkah_resolusi'] += langkah
+        self.stats['langkah_max'] = max(self.stats['langkah_max'], langkah_max)
 
     def _cek_terbukti(self):
         """Kalau KB ⊨ Pelaku(x) ∧ Senjata(w) ∧ TKP(r), TELL fakta Terbukti(x, w, r).
         Tuduh hanya ada di ACTIONS(s) kalau fakta ini ada, jadi AI tidak bisa menuduh tanpa bukti."""
         if self.terbukti:
             return
-        pasti = {cat: v for (cat, v), st in self.state.items() if st == 'pasti'}
+        pasti = {kategori: nilai for (kategori, nilai), st in self.state.items() if st == 'pasti'}
         if all(k in pasti for k in 'swr'):
-            xs, ws, rs = pasti['s'], pasti['w'], pasti['r']
-            self.kb.tell(Atom('Terbukti', C[xs], C[ws], C[rs]), 'inferensi: KB ⊨ jawaban')
-            self.terbukti = World(xs, ws, rs)
+            pelaku, senjata, tkp = pasti['s'], pasti['w'], pasti['r']
+            self.kb.tell(Atom('Terbukti', C[pelaku], C[senjata], C[tkp]), 'inferensi: KB ⊨ jawaban')
+            self.terbukti = World(pelaku, senjata, tkp)
 
     def status(self):
         return dict(self.state)
 
-    def bukti(self, cat, v, positif=True):
-        """Langkah resolusi untuk KB ⊨ Pelaku(v) (atau negasinya)."""
-        atom = next(a for c, i, a in QUERY_ATOMS if c == cat and i == v)
-        ok, p, empty = self.kb.ask((atom, positif))
-        return p.proof(empty) if ok else []
+    def bukti(self, kategori, nilai, positif=True):
+        """Langkah resolusi untuk KB ⊨ Pelaku(nilai) (atau negasinya)."""
+        atom = next(a for k, i, a in QUERY_ATOMS if k == kategori and i == nilai)
+        ok, prover, empty = self.kb.ask((atom, positif))
+        return prover.proof(empty) if ok else []
 
     # ---- penjelasan untuk UI ----
     def trace_teks(self):
         """Reasoning trace dalam bentuk baris teks: setiap bukti yang di-TELL, penilaian
         berguna/tidak, kesimpulan baru dari ASK, lalu langkah resolusi untuk jawaban akhir."""
-        nama = {'s': sn, 'w': lambda i: C[i], 'r': rn}
-        teks_st = {'pasti': 'pasti', 'gugur': 'bukan'}
-        kat = {'s': 'pelaku', 'w': 'senjata', 'r': 'TKP'}
         lines = []
-        for e in self.log:
-            clue = self.case['by_id'][e['id']]
-            tanda = 'berguna' if e['relevan'] else f"tidak berguna: {e['alasan']}"
-            lines.append(f"[{e['id']}] {clue['text']}")
-            lines.append(f"     TELL {'; '.join(e['fol'])}   ({tanda})")
-            baru = ', '.join(f'{kat[c]} {teks_st[st]} {nama[c](v)}' for (c, v), st in e['baru'])
-            lines.append(f"     ASK  {e['query']} query, {e['langkah']} langkah resolusi -> {baru or 'belum ada kesimpulan baru'}")
+        for entry in self.log:
+            lines += self._trace_bukti(entry)
         if self.terbukti:
-            t = self.terbukti
-            lines.append('')
-            lines.append(f'TELL Terbukti({C[t.s]}, {C[t.w]}, {C[t.r]})  ->  aksi Tuduh tersedia')
-            for cat, v in (('s', t.s), ('w', t.w), ('r', t.r)):
-                lines.append(f'Bukti resolusi KB ⊨ {QUERY_LABEL[cat]}({C[v]}):')
-                for i, (a, b, hasil) in enumerate(self.bukti(cat, v), 1):
-                    lines.append(f'  {i:>2}. {a}  +  {b}  =>  {hasil or "□ (klausa kosong)"}')
+            lines += self._trace_jawaban()
         return lines
 
-    # ---- planning ----
+    def _trace_bukti(self, entry):
+        clue = self.case['by_id'][entry['id']]
+        tanda = 'berguna' if entry['relevan'] else f"tidak berguna: {entry['alasan']}"
+        baru = ', '.join(f'{_KATEGORI[k]} {_STATUS[st]} {_NAMA[k](v)}' for (k, v), st in entry['baru'])
+        return [f"[{entry['id']}] {clue['text']}",
+                f"     TELL {'; '.join(entry['fol'])}   ({tanda})",
+                f"     ASK  {entry['query']} query, {entry['langkah']} langkah resolusi -> {baru or 'belum ada kesimpulan baru'}"]
+
+    def _trace_jawaban(self):
+        t = self.terbukti
+        lines = ['', f'TELL Terbukti({C[t.s]}, {C[t.w]}, {C[t.r]})  ->  aksi Tuduh tersedia']
+        for kategori, nilai in (('s', t.s), ('w', t.w), ('r', t.r)):
+            lines.append(f'Bukti resolusi KB ⊨ {QUERY_LABEL[kategori]}({C[nilai]}):')
+            for i, (a, b, hasil) in enumerate(self.bukti(kategori, nilai), 1):
+                lines.append(f'  {i:>2}. {a}  +  {b}  =>  {hasil or "□ (klausa kosong)"}')
+        return lines
+
+    # ---- gerak ----
     def tuduhan(self):
         """Tuduh(x, w, r) hanya ada di ACTIONS(s) kalau fakta Terbukti(x, w, r) sudah ada di KB."""
         return self.terbukti
@@ -297,24 +313,25 @@ class AgenV2:
         digeledah, jadi semua ruangan yang belum digeledah ikut, kecuali Ruang Tamu (sudah
         diperiksa polisi) dan target yang topik hasil mengupingnya sudah terbukti."""
         terbuka = self.terbuka()
-        rooms = {rr for rr in R_IDS if rr not in searched and rr != DIPERIKSA_POLISI
-                 and nilai_target(self.topik, ('r', rr), 1, terbuka)}
-        sus = {s for s in S_IDS if s not in asked and nilai_target(self.topik, ('s', s), 1, terbuka)}
-        return rooms, sus
+        rooms = {ruang for ruang in R_IDS if ruang not in searched and ruang != DIPERIKSA_POLISI
+                 and nilai_target(self.topik, kunci_topik('geledah', ruang), 1, terbuka)}
+        tersangka = {x for x in S_IDS if x not in asked
+                     and nilai_target(self.topik, kunci_topik('interogasi', x), 1, terbuka)}
+        return rooms, tersangka
 
-    def aksi(self, pos, searched, asked, punya_tp=False):
-        """A* ke informasi baru berikutnya; hanya aksi pertama yang dijalankan (online replanning)."""
-        target = self.target(searched, asked)
-        if not any(target):
-            return None, {}
-        plan, expanded, ditahan = rencanakan(pos, searched, asked, target, self.case['loc'],
-                                             punya_tp=punya_tp, algoritma='astar')
-        self.stats['simpul_planner'] += expanded
-        self.stats['rencana'] += 1
-        self.stats['teleport_ditahan'] += ditahan
-        if not plan:
-            return None, {}
-        return plan[0], dict(rencana=teks_rencana(plan), simpul=expanded)
+
+def _sumber_bukti(clue):
+    """Asal bukti untuk label klausa di KB, misalnya 'kesaksian Bu Sari' atau 'bukti Dapur'."""
+    if clue['kind'] == 'kesaksian':
+        return f'kesaksian {sn(clue["speaker"])}'
+    if clue['kind'] == 'berkas':
+        return 'berkas polisi'
+    return f'bukti {rn(clue["room"])}'
+
+
+_NAMA = {'s': sn, 'w': lambda i: C[i], 'r': rn}
+_KATEGORI = {'s': 'pelaku', 'w': 'senjata', 'r': 'TKP'}
+_STATUS = {'pasti': 'pasti', 'gugur': 'bukan'}
 
 
 def tampil_aturan():
