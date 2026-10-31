@@ -35,6 +35,7 @@ ROOMS = [
 TKP = ['perpus', 'dapur', 'kamar', 'taman']
 START = 'rtamu'           # Ruang Tamu: titik awal, sudah diperiksa polisi
 MAX_ROUNDS = 7
+WAKTU_KEMATIAN = '21.00–23.00'
 
 S_IDS = [s[0] for s in SUSPECTS]
 W_IDS = [w[0] for w in WEAPONS]
@@ -235,14 +236,14 @@ def _try_build(rnd):
                          lambda m: m.r not in wood, [Atom('NodaBasah')]))
 
     alibi_texts = [
-        lambda x: f'Struk minimarket: {x} berbelanja di luar rumah pukul 21.00–23.00.',
-        lambda x: f'Satpam kompleks: {x} mengobrol di pos jaga pukul 21.00–23.00.',
+        lambda x: f'Struk minimarket: {x} berbelanja di luar rumah pukul {WAKTU_KEMATIAN}.',
+        lambda x: f'Satpam kompleks: {x} mengobrol di pos jaga pukul {WAKTU_KEMATIAN}.',
         lambda x: f'Tiket bioskop atas nama {x}, pertunjukan pukul 20.45–23.10.',
     ]
     for y in innocents:
         pool.append(phys(pick(rnd, alibi_texts)(sn(y)), None, lambda m, y=y: m.s != y, [Atom('AdaAlibi', C[y])]))
     a, b = shuffle(rnd, innocents)[:2]
-    pool.append(phys(f'Foto di ponsel yang tertinggal: {sn(a)} dan {sn(b)} bermain catur bersama pukul 21.00–23.00.', 'rmakan',
+    pool.append(phys(f'Foto di ponsel yang tertinggal: {sn(a)} dan {sn(b)} bermain catur bersama pukul {WAKTU_KEMATIAN}.', 'rmakan',
                      lambda m, a=a, b=b: m.s not in (a, b), [Atom('AdaAlibi', C[a]), Atom('AdaAlibi', C[b])]))
     fp = shuffle(rnd, [sol.s, pick(rnd, innocents)])
     pool.append(phys(f'Jejak sepatu ukuran 43 di dekat TKP. Hanya {sn(fp[0])} dan {sn(fp[1])} yang memakai ukuran itu.', None,

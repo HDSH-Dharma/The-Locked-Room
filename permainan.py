@@ -25,6 +25,7 @@ Dua cara menjalankan:
 - per langkah untuk UI: mulai(), lalu aksi_tim(d, aksi) tiga kali, giliran_ai(),
   ulangi sampai sidang. tuduh_tim(jawaban) boleh kapan saja di giliran tim atau saat sidang.
 """
+import random
 from collections import Counter
 from kasus import generate_case, START, MAX_ROUNDS, S_IDS, World, neighbors, sn, wn, rn
 from denah import pakai_denah, lengkapi, serong
@@ -59,7 +60,7 @@ class Permainan:
         self.uji = uji
         self.aksi_ronde = 0       # aksi tim yang sudah dipakai di ronde ini (mode per langkah)
         self.sidang_dibuka = False
-        self.ai_selesai = False   # test mode: AI sudah menemukan jawaban dan berhenti bergerak
+        self.ai_selesai = False   # test mode: AI sudah menuduh diam-diam, tapi tetap bergerak
         self.tuduhan_ai = None    # test mode: tuduhan AI yang disembunyikan
         self.ronde = 1
         self.hasil = None
@@ -214,19 +215,22 @@ class Permainan:
         Mengembalikan daftar (posisi AI sebelum aksi, aksi) untuk ditampilkan UI."""
         assert not self.hasil and not self.sidang_dibuka
         langkah = []
-        if not self.ai_selesai:
-            for _ in range(self.pola[(self.ronde - 1) % len(self.pola)]):
-                if self._ai_coba_tuduh():
-                    break
-                act, info = self.ai.aksi(self.ai_pos, self.ai_searched, self.ai_asked,
-                                         punya_tp=self.tp_holder == 'ai')
-                if act is None:
+        for i in range(self.pola[(self.ronde - 1) % len(self.pola)]):
+            # Test mode: AI tetap memakai semua aksinya setelah menuduh, supaya pemain tidak bisa menebak.
+            if not self.ai_selesai and self._ai_coba_tuduh() and not self.uji:
+                break
+            act, info = self.ai.aksi(self.ai_pos, self.ai_searched, self.ai_asked,
+                                     punya_tp=self.tp_holder == 'ai')
+            if act is None:
+                if not self.ai_selesai:
                     self.log('ai', 'tunggu', {})
                     break
-                langkah.append((self.ai_pos, act))
-                self._ai_jalankan(act, info, self.ronde)
-            if not self.hasil and not self.ai_selesai:
-                self._ai_coba_tuduh()
+                rng = random.Random(self.case['seed'] * 100 + self.ronde * 10 + i)
+                act, info = ('pindah', rng.choice(neighbors(self.ai_pos))), {}
+            langkah.append((self.ai_pos, act))
+            self._ai_jalankan(act, info, self.ronde)
+        if not self.hasil and not self.ai_selesai:
+            self._ai_coba_tuduh()
         if not self.hasil:
             if self.ronde < MAX_ROUNDS:
                 self.ronde += 1
@@ -259,12 +263,12 @@ class Permainan:
             return dict(tipe='ai' if t['benar'] else 'ai-salah', tebakan=t['tebakan'], ronde=t['ronde'])
         return self.hasil
 
-    def ke_log(self, pemain, ai_live, durasi_detik, tanda_bukti=True):
-        """Isi file log JSON untuk replay (format hasil rapat, ditambah mode, tanda_bukti, sidang)."""
+    def ke_log(self, pemain, ai_live, durasi_detik):
+        """Isi file log JSON untuk replay (format hasil rapat, ditambah mode, aturan, sidang)."""
         tuduhan = next((dict(ronde=r, jawaban=list(data['guess']), sidang=self.sidang_dibuka)
                         for r, siapa, jenis, data in self.events if siapa == 'tim' and jenis == 'tuduh'), None)
         return dict(seed=self.case['seed'], pemain=pemain, ai_live=ai_live, durasi_detik=round(durasi_detik),
-                    mode='uji' if self.uji else 'normal', tanda_bukti=tanda_bukti,
+                    mode='uji' if self.uji else 'normal', aturan='proposal',
                     aksi_tim=[[r, data['d'], list(data['act'])]
                               for r, siapa, jenis, data in self.events if siapa == 'tim' and jenis == 'aksi'],
                     tuduhan_tim=tuduhan, hasil=self.hasil_akhir()['tipe'] if self.hasil else None)
@@ -273,7 +277,7 @@ class Permainan:
         g = self.ai.tuduhan()
         if g:
             if self.uji:
-                # Test mode: tuduhan disimpan diam-diam, AI berhenti, tim tetap lanjut bermain.
+                # Test mode: tuduhan disimpan diam-diam, tim dan AI tetap lanjut bermain.
                 if not self.tuduhan_ai:
                     self.tuduhan_ai = dict(tebakan=g, ronde=self.ronde, benar=g == self.case['sol'])
                     self.log('ai', 'tuduh-tersembunyi', dict(guess=g, benar=g == self.case['sol']))
