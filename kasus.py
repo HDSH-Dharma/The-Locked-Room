@@ -6,8 +6,10 @@ kasus yang sama selalu menghasilkan kasus yang sama. Sejak aturan proposal (kesa
 pernah menyebut pelaku asli), sebagian kasus berbeda dari versi web.
 
 Aturan proposal yang dipegang generator:
-- Kesaksian tidak pernah menyebut pelaku asli. Saksi jujur tidak pernah berkata "Aku yakin
-  <pelaku> pelakunya"; pelaku boleh berbohong dengan menuduh orang lain.
+- Kesaksian tidak pernah menyebut pelaku asli. Kesaksian juga tidak menyebut tersangka lain:
+  dengan aturan ini, "Aku yakin Y pelakunya" hanya bisa diucapkan pelaku (langsung membongkar
+  pelakunya) dan "Y bukan pelakunya" hanya bisa diucapkan saksi jujur. Pelaku hanya bisa
+  ditemukan dengan mencocokkan kesaksian dengan bukti lain.
 - Ruang Tamu sudah diperiksa polisi (isinya berkas polisi), jadi tidak ada bukti fisik di sana.
 
 Setiap bukti punya DUA representasi:
@@ -114,12 +116,6 @@ def statement_options(x, found):
                     fol=Atom('Dipindahkan')))
     out.append(dict(weight=1, text=f'Korban dibunuh di {f_low}, tempat jasadnya ditemukan.', f=lambda m: m.r == found,
                     fol=Atom('TKP', C[found])))
-    for y in S_IDS:
-        if y == x:
-            continue
-        out.append(dict(weight=2, text=f'{sn(y)} bukan pelakunya.', f=lambda m, y=y: m.s != y, fol=Not(Atom('Pelaku', C[y]))))
-        out.append(dict(weight=2, text=f'Aku yakin {sn(y)} pelakunya.', f=lambda m, y=y: m.s == y, fol=Atom('Pelaku', C[y]),
-                        menyebut=y))
     for w in W_IDS:
         low = wn(w).lower()
         out.append(dict(weight=1, text=f'Senjatanya bukan {low}.', f=lambda m, w=w: m.w != w, fol=Not(Atom('Senjata', C[w]))))
@@ -176,9 +172,7 @@ def _try_build(rnd):
             st = dict(text='Aku bukan pelakunya.', f=lambda m, x=x: m.s != x, fol=Not(Atom('Pelaku', C[x])))
             self_used = True
         else:
-            # Kesaksian tidak pernah menyebut pelaku asli (proposal).
-            st = weighted_pick(rnd, [o for o in statement_options(x, found)
-                                     if o['f'](sol) == honest and o.get('menyebut') != sol.s])
+            st = weighted_pick(rnd, [o for o in statement_options(x, found) if o['f'](sol) == honest])
         testimonies.append(make_testimony(x, st, loc[x]))
     models = [m for m in ALL_WORLDS if all(t['prop'](m) for t in testimonies)]
     if len(models) <= 4:
