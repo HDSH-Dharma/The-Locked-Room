@@ -1,8 +1,8 @@
 """
 Denah rumah (9, 12, atau 16 ruangan), teleport, dan topik untuk menguping.
 
-- Denah 9 ruangan identik dengan versi web, jadi nomor kasus yang sama tetap menghasilkan
-  kasus yang sama. Denah 12 dan 16 menambah kolom/baris baru; Ruang Tamu tetap start.
+- Denah 9 ruangan dipakai di game. Denah 12 dan 16 menambah kolom/baris baru (Ruang Tamu
+  tetap titik awal) untuk menguji skala, misalnya A* vs BFS di rumah yang lebih besar.
 - Teleport: lompat serong 1 atau 2 kotak, 1 aksi, sekali pakai.
 - Menguping hanya memberi TOPIK bukti (tersangka, senjata, ruangan, jasad), bukan isinya.
   Topik bukan fakta logika, jadi tidak masuk KB; agen memakainya untuk memilih tujuan.
@@ -20,15 +20,22 @@ LAYOUTS = {
         ('rtamu', 'Ruang Tamu', 2, 0), ('rmakan', 'Ruang Makan', 2, 1), ('taman', 'Taman', 2, 2),
     ],
     '12': [
-        ('gudang', 'Gudang', 0, 0), ('loteng', 'Loteng', 0, 1), ('kamar', 'Kamar Tidur', 0, 2), ('balkon', 'Balkon', 0, 3),
-        ('perpus', 'Perpustakaan', 1, 0), ('dapur', 'Dapur', 1, 1), ('kmandi', 'Kamar Mandi', 1, 2), ('rkerja', 'Ruang Kerja', 1, 3),
-        ('rtamu', 'Ruang Tamu', 2, 0), ('rmakan', 'Ruang Makan', 2, 1), ('taman', 'Taman', 2, 2), ('garasi', 'Garasi', 2, 3),
+        ('gudang', 'Gudang', 0, 0), ('loteng', 'Loteng', 0, 1),
+        ('kamar', 'Kamar Tidur', 0, 2), ('balkon', 'Balkon', 0, 3),
+        ('perpus', 'Perpustakaan', 1, 0), ('dapur', 'Dapur', 1, 1),
+        ('kmandi', 'Kamar Mandi', 1, 2), ('rkerja', 'Ruang Kerja', 1, 3),
+        ('rtamu', 'Ruang Tamu', 2, 0), ('rmakan', 'Ruang Makan', 2, 1),
+        ('taman', 'Taman', 2, 2), ('garasi', 'Garasi', 2, 3),
     ],
     '16': [
-        ('gudang', 'Gudang', 0, 0), ('loteng', 'Loteng', 0, 1), ('kamar', 'Kamar Tidur', 0, 2), ('balkon', 'Balkon', 0, 3),
-        ('perpus', 'Perpustakaan', 1, 0), ('dapur', 'Dapur', 1, 1), ('kmandi', 'Kamar Mandi', 1, 2), ('rkerja', 'Ruang Kerja', 1, 3),
-        ('rmusik', 'Ruang Musik', 2, 0), ('rmakan', 'Ruang Makan', 2, 1), ('taman', 'Taman', 2, 2), ('garasi', 'Garasi', 2, 3),
-        ('rtamu', 'Ruang Tamu', 3, 0), ('teras', 'Teras', 3, 1), ('kolam', 'Kolam Renang', 3, 2), ('gazebo', 'Gazebo', 3, 3),
+        ('gudang', 'Gudang', 0, 0), ('loteng', 'Loteng', 0, 1),
+        ('kamar', 'Kamar Tidur', 0, 2), ('balkon', 'Balkon', 0, 3),
+        ('perpus', 'Perpustakaan', 1, 0), ('dapur', 'Dapur', 1, 1),
+        ('kmandi', 'Kamar Mandi', 1, 2), ('rkerja', 'Ruang Kerja', 1, 3),
+        ('rmusik', 'Ruang Musik', 2, 0), ('rmakan', 'Ruang Makan', 2, 1),
+        ('taman', 'Taman', 2, 2), ('garasi', 'Garasi', 2, 3),
+        ('rtamu', 'Ruang Tamu', 3, 0), ('teras', 'Teras', 3, 1),
+        ('kolam', 'Kolam Renang', 3, 2), ('gazebo', 'Gazebo', 3, 3),
     ],
 }
 _aktif = ['9']
@@ -46,10 +53,6 @@ def pakai_denah(nama):
     kasus.POS.clear()
     kasus.POS.update({r[0]: (r[2], r[3]) for r in rooms})
     _aktif[0] = nama
-
-
-def denah_aktif():
-    return _aktif[0]
 
 
 def serong(room):
@@ -71,37 +74,33 @@ def _bfs(start, punya_tp):
     jadi kalau panjangnya sama, rute tanpa teleport yang ditemukan duluan."""
     s0 = (start, punya_tp)
     parent = {s0: None}
-    q = deque([s0])
-    while q:
-        cur = q.popleft()
+    frontier = deque([s0])
+    while frontier:
+        cur = frontier.popleft()
         room, tp = cur
-        nexts = [(('pindah', nb), (nb, tp)) for nb in kasus.neighbors(room)]
+        berikut = [(('pindah', nb), (nb, tp)) for nb in kasus.neighbors(room)]
         if tp:
-            nexts += [(('teleport', d), (d, False)) for d in serong(room)]
-        for act, nxt in nexts:
+            berikut += [(('teleport', tujuan), (tujuan, False)) for tujuan in serong(room)]
+        for act, nxt in berikut:
             if nxt not in parent:
                 parent[nxt] = (cur, act)
-                q.append(nxt)
+                frontier.append(nxt)
     return parent
 
 
-def _dist(parent):
-    depth = {}
+def _jarak_per_ruang(parent):
+    """Jarak terpendek ke setiap ruangan dari pohon BFS (state = (ruangan, punya teleport))."""
+    hasil = {}
     for s in parent:
-        d, cur = 0, s
-        while parent[cur]:
-            cur = parent[cur][0]
-            d += 1
-        room = s[0]
-        depth[room] = min(depth.get(room, 99), d)
-    return depth
+        hasil[s[0]] = min(hasil.get(s[0], 99), _depth(parent, s))
+    return hasil
 
 
 def jarak(pos, punya_tp=False):
     """(jarak tanpa teleport, jarak kalau teleport boleh dipakai) ke setiap ruangan."""
-    d0 = _dist(_bfs(pos, False))
-    d1 = _dist(_bfs(pos, True)) if punya_tp else d0
-    return d0, d1
+    tanpa_tp = _jarak_per_ruang(_bfs(pos, False))
+    dengan_tp = _jarak_per_ruang(_bfs(pos, True)) if punya_tp else tanpa_tp
+    return tanpa_tp, dengan_tp
 
 
 def langkah_pertama(pos, goal, pakai_tp):
@@ -154,14 +153,19 @@ def topik(clue):
 
 
 def lengkapi(case):
-    """Tambahkan letak teleport dan topik tiap bukti. Memakai aliran acak terpisah,
-    jadi isi kasus (pelaku, bukti, letak bukti) tidak berubah."""
-    rnd = kasus.make_rng(case['seed'] * 2654435761 + 97)
-    cands = [r for r in kasus.R_IDS if r != kasus.START and case['room_clues'][r]]
-    case['teleport'] = kasus.pick(rnd, cands)
+    """Tambahkan letak teleport dan topik tiap bukti ke kasus."""
+    _letakkan_teleport(case)
     for c in case['clues']:
         c['topik'] = topik(c)
     return case
+
+
+def _letakkan_teleport(case):
+    """Teleport disembunyikan di salah satu ruangan berisi bukti (bukan Ruang Tamu). Memakai
+    aliran acak terpisah, jadi isi kasus (pelaku, bukti, letak bukti) tidak berubah."""
+    rnd = kasus.make_rng(case['seed'] * 2654435761 + 97)
+    kandidat = [r for r in kasus.R_IDS if r != kasus.START and case['room_clues'][r]]
+    case['teleport'] = kasus.pick(rnd, kandidat)
 
 
 def topik_terbuka(t, terbuka):
