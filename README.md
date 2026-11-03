@@ -42,7 +42,7 @@ Hasil ditulis ke folder `hasil/`.
 | `denah.py` | Denah rumah, jarak, teleport, dan topik bukti untuk menguping. |
 | `teks.py` | Teks tampilan (aksi, jawaban, bukti, kesimpulan) untuk UI dan laporan. |
 | `app.py` | UI Streamlit. |
-| `buat_pembagian.py`, `pembagian.json` | Pembagian 300 kasus playtest: 100 per pemain, 25 per lawan AI. |
+| `buat_pembagian.py`, `pembagian.json` | Pembagian kasus playtest: 28 game per pemain (total 84), 7 per lawan AI. |
 | `replay.py` | Memutar ulang aksi tim dari log melawan Detektif AI mana pun. |
 | `evaluasi.py` | Tabel evaluasi dari replay semua log test mode. |
 | `simulasi.py` | Transkrip dan perbandingan dengan tim bot. |

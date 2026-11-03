@@ -1,1508 +1,428 @@
 {
-    "GK": [
-        {
-            "no": 1,
-            "seed": 190,
-            "lawan": "v2"
-        },
-        {
-            "no": 2,
-            "seed": 138,
-            "lawan": "v1"
-        },
-        {
-            "no": 3,
-            "seed": 36,
-            "lawan": "polisi"
-        },
-        {
-            "no": 4,
-            "seed": 198,
-            "lawan": "penebak"
-        },
-        {
-            "no": 5,
-            "seed": 229,
-            "lawan": "v2"
-        },
-        {
-            "no": 6,
-            "seed": 90,
-            "lawan": "v1"
-        },
-        {
-            "no": 7,
-            "seed": 186,
-            "lawan": "polisi"
-        },
-        {
-            "no": 8,
-            "seed": 203,
-            "lawan": "penebak"
-        },
-        {
-            "no": 9,
-            "seed": 156,
-            "lawan": "v2"
-        },
-        {
-            "no": 10,
-            "seed": 242,
-            "lawan": "v1"
-        },
-        {
-            "no": 11,
-            "seed": 96,
-            "lawan": "polisi"
-        },
-        {
-            "no": 12,
-            "seed": 114,
-            "lawan": "penebak"
-        },
-        {
-            "no": 13,
-            "seed": 165,
-            "lawan": "v2"
-        },
-        {
-            "no": 14,
-            "seed": 215,
-            "lawan": "v1"
-        },
-        {
-            "no": 15,
-            "seed": 91,
-            "lawan": "polisi"
-        },
-        {
-            "no": 16,
-            "seed": 97,
-            "lawan": "penebak"
-        },
-        {
-            "no": 17,
-            "seed": 48,
-            "lawan": "v2"
-        },
-        {
-            "no": 18,
-            "seed": 199,
-            "lawan": "v1"
-        },
-        {
-            "no": 19,
-            "seed": 105,
-            "lawan": "polisi"
-        },
-        {
-            "no": 20,
-            "seed": 15,
-            "lawan": "penebak"
-        },
-        {
-            "no": 21,
-            "seed": 127,
-            "lawan": "v2"
-        },
-        {
-            "no": 22,
-            "seed": 152,
-            "lawan": "v1"
-        },
-        {
-            "no": 23,
-            "seed": 8,
-            "lawan": "polisi"
-        },
-        {
-            "no": 24,
-            "seed": 142,
-            "lawan": "penebak"
-        },
-        {
-            "no": 25,
-            "seed": 33,
-            "lawan": "v2"
-        },
-        {
-            "no": 26,
-            "seed": 213,
-            "lawan": "v1"
-        },
-        {
-            "no": 27,
-            "seed": 212,
-            "lawan": "polisi"
-        },
-        {
-            "no": 28,
-            "seed": 220,
-            "lawan": "penebak"
-        },
-        {
-            "no": 29,
-            "seed": 266,
-            "lawan": "v2"
-        },
-        {
-            "no": 30,
-            "seed": 63,
-            "lawan": "v1"
-        },
-        {
-            "no": 31,
-            "seed": 219,
-            "lawan": "polisi"
-        },
-        {
-            "no": 32,
-            "seed": 29,
-            "lawan": "penebak"
-        },
-        {
-            "no": 33,
-            "seed": 241,
-            "lawan": "v2"
-        },
-        {
-            "no": 34,
-            "seed": 68,
-            "lawan": "v1"
-        },
-        {
-            "no": 35,
-            "seed": 21,
-            "lawan": "polisi"
-        },
-        {
-            "no": 36,
-            "seed": 55,
-            "lawan": "penebak"
-        },
-        {
-            "no": 37,
-            "seed": 293,
-            "lawan": "v2"
-        },
-        {
-            "no": 38,
-            "seed": 19,
-            "lawan": "v1"
-        },
-        {
-            "no": 39,
-            "seed": 211,
-            "lawan": "polisi"
-        },
-        {
-            "no": 40,
-            "seed": 243,
-            "lawan": "penebak"
-        },
-        {
-            "no": 41,
-            "seed": 78,
-            "lawan": "v2"
-        },
-        {
-            "no": 42,
-            "seed": 278,
-            "lawan": "v1"
-        },
-        {
-            "no": 43,
-            "seed": 157,
-            "lawan": "polisi"
-        },
-        {
-            "no": 44,
-            "seed": 72,
-            "lawan": "penebak"
-        },
-        {
-            "no": 45,
-            "seed": 54,
-            "lawan": "v2"
-        },
-        {
-            "no": 46,
-            "seed": 87,
-            "lawan": "v1"
-        },
-        {
-            "no": 47,
-            "seed": 119,
-            "lawan": "polisi"
-        },
-        {
-            "no": 48,
-            "seed": 86,
-            "lawan": "penebak"
-        },
-        {
-            "no": 49,
-            "seed": 84,
-            "lawan": "v2"
-        },
-        {
-            "no": 50,
-            "seed": 136,
-            "lawan": "v1"
-        },
-        {
-            "no": 51,
-            "seed": 28,
-            "lawan": "polisi"
-        },
-        {
-            "no": 52,
-            "seed": 137,
-            "lawan": "penebak"
-        },
-        {
-            "no": 53,
-            "seed": 85,
-            "lawan": "v2"
-        },
-        {
-            "no": 54,
-            "seed": 208,
-            "lawan": "v1"
-        },
-        {
-            "no": 55,
-            "seed": 43,
-            "lawan": "polisi"
-        },
-        {
-            "no": 56,
-            "seed": 11,
-            "lawan": "penebak"
-        },
-        {
-            "no": 57,
-            "seed": 298,
-            "lawan": "v2"
-        },
-        {
-            "no": 58,
-            "seed": 100,
-            "lawan": "v1"
-        },
-        {
-            "no": 59,
-            "seed": 286,
-            "lawan": "polisi"
-        },
-        {
-            "no": 60,
-            "seed": 147,
-            "lawan": "penebak"
-        },
-        {
-            "no": 61,
-            "seed": 251,
-            "lawan": "v2"
-        },
-        {
-            "no": 62,
-            "seed": 261,
-            "lawan": "v1"
-        },
-        {
-            "no": 63,
-            "seed": 94,
-            "lawan": "polisi"
-        },
-        {
-            "no": 64,
-            "seed": 163,
-            "lawan": "penebak"
-        },
-        {
-            "no": 65,
-            "seed": 194,
-            "lawan": "v2"
-        },
-        {
-            "no": 66,
-            "seed": 62,
-            "lawan": "v1"
-        },
-        {
-            "no": 67,
-            "seed": 265,
-            "lawan": "polisi"
-        },
-        {
-            "no": 68,
-            "seed": 223,
-            "lawan": "penebak"
-        },
-        {
-            "no": 69,
-            "seed": 202,
-            "lawan": "v2"
-        },
-        {
-            "no": 70,
-            "seed": 70,
-            "lawan": "v1"
-        },
-        {
-            "no": 71,
-            "seed": 282,
-            "lawan": "polisi"
-        },
-        {
-            "no": 72,
-            "seed": 23,
-            "lawan": "penebak"
-        },
-        {
-            "no": 73,
-            "seed": 176,
-            "lawan": "v2"
-        },
-        {
-            "no": 74,
-            "seed": 5,
-            "lawan": "v1"
-        },
-        {
-            "no": 75,
-            "seed": 185,
-            "lawan": "polisi"
-        },
-        {
-            "no": 76,
-            "seed": 71,
-            "lawan": "penebak"
-        },
-        {
-            "no": 77,
-            "seed": 271,
-            "lawan": "v2"
-        },
-        {
-            "no": 78,
-            "seed": 30,
-            "lawan": "v1"
-        },
-        {
-            "no": 79,
-            "seed": 77,
-            "lawan": "polisi"
-        },
-        {
-            "no": 80,
-            "seed": 218,
-            "lawan": "penebak"
-        },
-        {
-            "no": 81,
-            "seed": 44,
-            "lawan": "v2"
-        },
-        {
-            "no": 82,
-            "seed": 89,
-            "lawan": "v1"
-        },
-        {
-            "no": 83,
-            "seed": 56,
-            "lawan": "polisi"
-        },
-        {
-            "no": 84,
-            "seed": 249,
-            "lawan": "penebak"
-        },
-        {
-            "no": 85,
-            "seed": 295,
-            "lawan": "v2"
-        },
-        {
-            "no": 86,
-            "seed": 188,
-            "lawan": "v1"
-        },
-        {
-            "no": 87,
-            "seed": 151,
-            "lawan": "polisi"
-        },
-        {
-            "no": 88,
-            "seed": 169,
-            "lawan": "penebak"
-        },
-        {
-            "no": 89,
-            "seed": 80,
-            "lawan": "v2"
-        },
-        {
-            "no": 90,
-            "seed": 74,
-            "lawan": "v1"
-        },
-        {
-            "no": 91,
-            "seed": 257,
-            "lawan": "polisi"
-        },
-        {
-            "no": 92,
-            "seed": 146,
-            "lawan": "penebak"
-        },
-        {
-            "no": 93,
-            "seed": 16,
-            "lawan": "v2"
-        },
-        {
-            "no": 94,
-            "seed": 98,
-            "lawan": "v1"
-        },
-        {
-            "no": 95,
-            "seed": 245,
-            "lawan": "polisi"
-        },
-        {
-            "no": 96,
-            "seed": 192,
-            "lawan": "penebak"
-        },
-        {
-            "no": 97,
-            "seed": 88,
-            "lawan": "v2"
-        },
-        {
-            "no": 98,
-            "seed": 287,
-            "lawan": "v1"
-        },
-        {
-            "no": 99,
-            "seed": 300,
-            "lawan": "polisi"
-        },
-        {
-            "no": 100,
-            "seed": 66,
-            "lawan": "penebak"
-        }
-    ],
-    "JC": [
-        {
-            "no": 1,
-            "seed": 247,
-            "lawan": "v2"
-        },
-        {
-            "no": 2,
-            "seed": 250,
-            "lawan": "v1"
-        },
-        {
-            "no": 3,
-            "seed": 99,
-            "lawan": "polisi"
-        },
-        {
-            "no": 4,
-            "seed": 270,
-            "lawan": "penebak"
-        },
-        {
-            "no": 5,
-            "seed": 83,
-            "lawan": "v2"
-        },
-        {
-            "no": 6,
-            "seed": 45,
-            "lawan": "v1"
-        },
-        {
-            "no": 7,
-            "seed": 246,
-            "lawan": "polisi"
-        },
-        {
-            "no": 8,
-            "seed": 10,
-            "lawan": "penebak"
-        },
-        {
-            "no": 9,
-            "seed": 299,
-            "lawan": "v2"
-        },
-        {
-            "no": 10,
-            "seed": 14,
-            "lawan": "v1"
-        },
-        {
-            "no": 11,
-            "seed": 139,
-            "lawan": "polisi"
-        },
-        {
-            "no": 12,
-            "seed": 49,
-            "lawan": "penebak"
-        },
-        {
-            "no": 13,
-            "seed": 171,
-            "lawan": "v2"
-        },
-        {
-            "no": 14,
-            "seed": 214,
-            "lawan": "v1"
-        },
-        {
-            "no": 15,
-            "seed": 191,
-            "lawan": "polisi"
-        },
-        {
-            "no": 16,
-            "seed": 20,
-            "lawan": "penebak"
-        },
-        {
-            "no": 17,
-            "seed": 104,
-            "lawan": "v2"
-        },
-        {
-            "no": 18,
-            "seed": 158,
-            "lawan": "v1"
-        },
-        {
-            "no": 19,
-            "seed": 296,
-            "lawan": "polisi"
-        },
-        {
-            "no": 20,
-            "seed": 209,
-            "lawan": "penebak"
-        },
-        {
-            "no": 21,
-            "seed": 177,
-            "lawan": "v2"
-        },
-        {
-            "no": 22,
-            "seed": 196,
-            "lawan": "v1"
-        },
-        {
-            "no": 23,
-            "seed": 253,
-            "lawan": "polisi"
-        },
-        {
-            "no": 24,
-            "seed": 182,
-            "lawan": "penebak"
-        },
-        {
-            "no": 25,
-            "seed": 101,
-            "lawan": "v2"
-        },
-        {
-            "no": 26,
-            "seed": 18,
-            "lawan": "v1"
-        },
-        {
-            "no": 27,
-            "seed": 228,
-            "lawan": "polisi"
-        },
-        {
-            "no": 28,
-            "seed": 41,
-            "lawan": "penebak"
-        },
-        {
-            "no": 29,
-            "seed": 107,
-            "lawan": "v2"
-        },
-        {
-            "no": 30,
-            "seed": 234,
-            "lawan": "v1"
-        },
-        {
-            "no": 31,
-            "seed": 174,
-            "lawan": "polisi"
-        },
-        {
-            "no": 32,
-            "seed": 254,
-            "lawan": "penebak"
-        },
-        {
-            "no": 33,
-            "seed": 283,
-            "lawan": "v2"
-        },
-        {
-            "no": 34,
-            "seed": 122,
-            "lawan": "v1"
-        },
-        {
-            "no": 35,
-            "seed": 233,
-            "lawan": "polisi"
-        },
-        {
-            "no": 36,
-            "seed": 35,
-            "lawan": "penebak"
-        },
-        {
-            "no": 37,
-            "seed": 262,
-            "lawan": "v2"
-        },
-        {
-            "no": 38,
-            "seed": 81,
-            "lawan": "v1"
-        },
-        {
-            "no": 39,
-            "seed": 288,
-            "lawan": "polisi"
-        },
-        {
-            "no": 40,
-            "seed": 272,
-            "lawan": "penebak"
-        },
-        {
-            "no": 41,
-            "seed": 92,
-            "lawan": "v2"
-        },
-        {
-            "no": 42,
-            "seed": 162,
-            "lawan": "v1"
-        },
-        {
-            "no": 43,
-            "seed": 269,
-            "lawan": "polisi"
-        },
-        {
-            "no": 44,
-            "seed": 12,
-            "lawan": "penebak"
-        },
-        {
-            "no": 45,
-            "seed": 31,
-            "lawan": "v2"
-        },
-        {
-            "no": 46,
-            "seed": 64,
-            "lawan": "v1"
-        },
-        {
-            "no": 47,
-            "seed": 284,
-            "lawan": "polisi"
-        },
-        {
-            "no": 48,
-            "seed": 22,
-            "lawan": "penebak"
-        },
-        {
-            "no": 49,
-            "seed": 230,
-            "lawan": "v2"
-        },
-        {
-            "no": 50,
-            "seed": 149,
-            "lawan": "v1"
-        },
-        {
-            "no": 51,
-            "seed": 155,
-            "lawan": "polisi"
-        },
-        {
-            "no": 52,
-            "seed": 1,
-            "lawan": "penebak"
-        },
-        {
-            "no": 53,
-            "seed": 24,
-            "lawan": "v2"
-        },
-        {
-            "no": 54,
-            "seed": 4,
-            "lawan": "v1"
-        },
-        {
-            "no": 55,
-            "seed": 167,
-            "lawan": "polisi"
-        },
-        {
-            "no": 56,
-            "seed": 38,
-            "lawan": "penebak"
-        },
-        {
-            "no": 57,
-            "seed": 106,
-            "lawan": "v2"
-        },
-        {
-            "no": 58,
-            "seed": 50,
-            "lawan": "v1"
-        },
-        {
-            "no": 59,
-            "seed": 25,
-            "lawan": "polisi"
-        },
-        {
-            "no": 60,
-            "seed": 95,
-            "lawan": "penebak"
-        },
-        {
-            "no": 61,
-            "seed": 201,
-            "lawan": "v2"
-        },
-        {
-            "no": 62,
-            "seed": 195,
-            "lawan": "v1"
-        },
-        {
-            "no": 63,
-            "seed": 17,
-            "lawan": "polisi"
-        },
-        {
-            "no": 64,
-            "seed": 200,
-            "lawan": "penebak"
-        },
-        {
-            "no": 65,
-            "seed": 255,
-            "lawan": "v2"
-        },
-        {
-            "no": 66,
-            "seed": 259,
-            "lawan": "v1"
-        },
-        {
-            "no": 67,
-            "seed": 116,
-            "lawan": "polisi"
-        },
-        {
-            "no": 68,
-            "seed": 224,
-            "lawan": "penebak"
-        },
-        {
-            "no": 69,
-            "seed": 240,
-            "lawan": "v2"
-        },
-        {
-            "no": 70,
-            "seed": 113,
-            "lawan": "v1"
-        },
-        {
-            "no": 71,
-            "seed": 26,
-            "lawan": "polisi"
-        },
-        {
-            "no": 72,
-            "seed": 273,
-            "lawan": "penebak"
-        },
-        {
-            "no": 73,
-            "seed": 82,
-            "lawan": "v2"
-        },
-        {
-            "no": 74,
-            "seed": 75,
-            "lawan": "v1"
-        },
-        {
-            "no": 75,
-            "seed": 292,
-            "lawan": "polisi"
-        },
-        {
-            "no": 76,
-            "seed": 170,
-            "lawan": "penebak"
-        },
-        {
-            "no": 77,
-            "seed": 143,
-            "lawan": "v2"
-        },
-        {
-            "no": 78,
-            "seed": 112,
-            "lawan": "v1"
-        },
-        {
-            "no": 79,
-            "seed": 128,
-            "lawan": "polisi"
-        },
-        {
-            "no": 80,
-            "seed": 131,
-            "lawan": "penebak"
-        },
-        {
-            "no": 81,
-            "seed": 120,
-            "lawan": "v2"
-        },
-        {
-            "no": 82,
-            "seed": 125,
-            "lawan": "v1"
-        },
-        {
-            "no": 83,
-            "seed": 178,
-            "lawan": "polisi"
-        },
-        {
-            "no": 84,
-            "seed": 244,
-            "lawan": "penebak"
-        },
-        {
-            "no": 85,
-            "seed": 232,
-            "lawan": "v2"
-        },
-        {
-            "no": 86,
-            "seed": 93,
-            "lawan": "v1"
-        },
-        {
-            "no": 87,
-            "seed": 248,
-            "lawan": "polisi"
-        },
-        {
-            "no": 88,
-            "seed": 227,
-            "lawan": "penebak"
-        },
-        {
-            "no": 89,
-            "seed": 118,
-            "lawan": "v2"
-        },
-        {
-            "no": 90,
-            "seed": 153,
-            "lawan": "v1"
-        },
-        {
-            "no": 91,
-            "seed": 168,
-            "lawan": "polisi"
-        },
-        {
-            "no": 92,
-            "seed": 39,
-            "lawan": "penebak"
-        },
-        {
-            "no": 93,
-            "seed": 9,
-            "lawan": "v2"
-        },
-        {
-            "no": 94,
-            "seed": 3,
-            "lawan": "v1"
-        },
-        {
-            "no": 95,
-            "seed": 69,
-            "lawan": "polisi"
-        },
-        {
-            "no": 96,
-            "seed": 76,
-            "lawan": "penebak"
-        },
-        {
-            "no": 97,
-            "seed": 52,
-            "lawan": "v2"
-        },
-        {
-            "no": 98,
-            "seed": 111,
-            "lawan": "v1"
-        },
-        {
-            "no": 99,
-            "seed": 236,
-            "lawan": "polisi"
-        },
-        {
-            "no": 100,
-            "seed": 239,
-            "lawan": "penebak"
-        }
-    ],
-    "HD": [
-        {
-            "no": 1,
-            "seed": 276,
-            "lawan": "v2"
-        },
-        {
-            "no": 2,
-            "seed": 277,
-            "lawan": "v1"
-        },
-        {
-            "no": 3,
-            "seed": 166,
-            "lawan": "polisi"
-        },
-        {
-            "no": 4,
-            "seed": 141,
-            "lawan": "penebak"
-        },
-        {
-            "no": 5,
-            "seed": 79,
-            "lawan": "v2"
-        },
-        {
-            "no": 6,
-            "seed": 290,
-            "lawan": "v1"
-        },
-        {
-            "no": 7,
-            "seed": 103,
-            "lawan": "polisi"
-        },
-        {
-            "no": 8,
-            "seed": 144,
-            "lawan": "penebak"
-        },
-        {
-            "no": 9,
-            "seed": 65,
-            "lawan": "v2"
-        },
-        {
-            "no": 10,
-            "seed": 140,
-            "lawan": "v1"
-        },
-        {
-            "no": 11,
-            "seed": 275,
-            "lawan": "polisi"
-        },
-        {
-            "no": 12,
-            "seed": 221,
-            "lawan": "penebak"
-        },
-        {
-            "no": 13,
-            "seed": 173,
-            "lawan": "v2"
-        },
-        {
-            "no": 14,
-            "seed": 117,
-            "lawan": "v1"
-        },
-        {
-            "no": 15,
-            "seed": 180,
-            "lawan": "polisi"
-        },
-        {
-            "no": 16,
-            "seed": 280,
-            "lawan": "penebak"
-        },
-        {
-            "no": 17,
-            "seed": 32,
-            "lawan": "v2"
-        },
-        {
-            "no": 18,
-            "seed": 59,
-            "lawan": "v1"
-        },
-        {
-            "no": 19,
-            "seed": 124,
-            "lawan": "polisi"
-        },
-        {
-            "no": 20,
-            "seed": 37,
-            "lawan": "penebak"
-        },
-        {
-            "no": 21,
-            "seed": 121,
-            "lawan": "v2"
-        },
-        {
-            "no": 22,
-            "seed": 110,
-            "lawan": "v1"
-        },
-        {
-            "no": 23,
-            "seed": 160,
-            "lawan": "polisi"
-        },
-        {
-            "no": 24,
-            "seed": 184,
-            "lawan": "penebak"
-        },
-        {
-            "no": 25,
-            "seed": 27,
-            "lawan": "v2"
-        },
-        {
-            "no": 26,
-            "seed": 172,
-            "lawan": "v1"
-        },
-        {
-            "no": 27,
-            "seed": 134,
-            "lawan": "polisi"
-        },
-        {
-            "no": 28,
-            "seed": 181,
-            "lawan": "penebak"
-        },
-        {
-            "no": 29,
-            "seed": 264,
-            "lawan": "v2"
-        },
-        {
-            "no": 30,
-            "seed": 210,
-            "lawan": "v1"
-        },
-        {
-            "no": 31,
-            "seed": 34,
-            "lawan": "polisi"
-        },
-        {
-            "no": 32,
-            "seed": 197,
-            "lawan": "penebak"
-        },
-        {
-            "no": 33,
-            "seed": 58,
-            "lawan": "v2"
-        },
-        {
-            "no": 34,
-            "seed": 268,
-            "lawan": "v1"
-        },
-        {
-            "no": 35,
-            "seed": 7,
-            "lawan": "polisi"
-        },
-        {
-            "no": 36,
-            "seed": 207,
-            "lawan": "penebak"
-        },
-        {
-            "no": 37,
-            "seed": 133,
-            "lawan": "v2"
-        },
-        {
-            "no": 38,
-            "seed": 132,
-            "lawan": "v1"
-        },
-        {
-            "no": 39,
-            "seed": 289,
-            "lawan": "polisi"
-        },
-        {
-            "no": 40,
-            "seed": 238,
-            "lawan": "penebak"
-        },
-        {
-            "no": 41,
-            "seed": 145,
-            "lawan": "v2"
-        },
-        {
-            "no": 42,
-            "seed": 279,
-            "lawan": "v1"
-        },
-        {
-            "no": 43,
-            "seed": 260,
-            "lawan": "polisi"
-        },
-        {
-            "no": 44,
-            "seed": 67,
-            "lawan": "penebak"
-        },
-        {
-            "no": 45,
-            "seed": 135,
-            "lawan": "v2"
-        },
-        {
-            "no": 46,
-            "seed": 267,
-            "lawan": "v1"
-        },
-        {
-            "no": 47,
-            "seed": 102,
-            "lawan": "polisi"
-        },
-        {
-            "no": 48,
-            "seed": 126,
-            "lawan": "penebak"
-        },
-        {
-            "no": 49,
-            "seed": 225,
-            "lawan": "v2"
-        },
-        {
-            "no": 50,
-            "seed": 154,
-            "lawan": "v1"
-        },
-        {
-            "no": 51,
-            "seed": 222,
-            "lawan": "polisi"
-        },
-        {
-            "no": 52,
-            "seed": 274,
-            "lawan": "penebak"
-        },
-        {
-            "no": 53,
-            "seed": 206,
-            "lawan": "v2"
-        },
-        {
-            "no": 54,
-            "seed": 130,
-            "lawan": "v1"
-        },
-        {
-            "no": 55,
-            "seed": 109,
-            "lawan": "polisi"
-        },
-        {
-            "no": 56,
-            "seed": 60,
-            "lawan": "penebak"
-        },
-        {
-            "no": 57,
-            "seed": 256,
-            "lawan": "v2"
-        },
-        {
-            "no": 58,
-            "seed": 205,
-            "lawan": "v1"
-        },
-        {
-            "no": 59,
-            "seed": 47,
-            "lawan": "polisi"
-        },
-        {
-            "no": 60,
-            "seed": 217,
-            "lawan": "penebak"
-        },
-        {
-            "no": 61,
-            "seed": 237,
-            "lawan": "v2"
-        },
-        {
-            "no": 62,
-            "seed": 187,
-            "lawan": "v1"
-        },
-        {
-            "no": 63,
-            "seed": 189,
-            "lawan": "polisi"
-        },
-        {
-            "no": 64,
-            "seed": 13,
-            "lawan": "penebak"
-        },
-        {
-            "no": 65,
-            "seed": 159,
-            "lawan": "v2"
-        },
-        {
-            "no": 66,
-            "seed": 73,
-            "lawan": "v1"
-        },
-        {
-            "no": 67,
-            "seed": 235,
-            "lawan": "polisi"
-        },
-        {
-            "no": 68,
-            "seed": 294,
-            "lawan": "penebak"
-        },
-        {
-            "no": 69,
-            "seed": 150,
-            "lawan": "v2"
-        },
-        {
-            "no": 70,
-            "seed": 46,
-            "lawan": "v1"
-        },
-        {
-            "no": 71,
-            "seed": 175,
-            "lawan": "polisi"
-        },
-        {
-            "no": 72,
-            "seed": 40,
-            "lawan": "penebak"
-        },
-        {
-            "no": 73,
-            "seed": 297,
-            "lawan": "v2"
-        },
-        {
-            "no": 74,
-            "seed": 193,
-            "lawan": "v1"
-        },
-        {
-            "no": 75,
-            "seed": 183,
-            "lawan": "polisi"
-        },
-        {
-            "no": 76,
-            "seed": 179,
-            "lawan": "penebak"
-        },
-        {
-            "no": 77,
-            "seed": 129,
-            "lawan": "v2"
-        },
-        {
-            "no": 78,
-            "seed": 204,
-            "lawan": "v1"
-        },
-        {
-            "no": 79,
-            "seed": 108,
-            "lawan": "polisi"
-        },
-        {
-            "no": 80,
-            "seed": 161,
-            "lawan": "penebak"
-        },
-        {
-            "no": 81,
-            "seed": 291,
-            "lawan": "v2"
-        },
-        {
-            "no": 82,
-            "seed": 6,
-            "lawan": "v1"
-        },
-        {
-            "no": 83,
-            "seed": 231,
-            "lawan": "polisi"
-        },
-        {
-            "no": 84,
-            "seed": 51,
-            "lawan": "penebak"
-        },
-        {
-            "no": 85,
-            "seed": 148,
-            "lawan": "v2"
-        },
-        {
-            "no": 86,
-            "seed": 57,
-            "lawan": "v1"
-        },
-        {
-            "no": 87,
-            "seed": 42,
-            "lawan": "polisi"
-        },
-        {
-            "no": 88,
-            "seed": 2,
-            "lawan": "penebak"
-        },
-        {
-            "no": 89,
-            "seed": 123,
-            "lawan": "v2"
-        },
-        {
-            "no": 90,
-            "seed": 226,
-            "lawan": "v1"
-        },
-        {
-            "no": 91,
-            "seed": 252,
-            "lawan": "polisi"
-        },
-        {
-            "no": 92,
-            "seed": 281,
-            "lawan": "penebak"
-        },
-        {
-            "no": 93,
-            "seed": 216,
-            "lawan": "v2"
-        },
-        {
-            "no": 94,
-            "seed": 285,
-            "lawan": "v1"
-        },
-        {
-            "no": 95,
-            "seed": 115,
-            "lawan": "polisi"
-        },
-        {
-            "no": 96,
-            "seed": 53,
-            "lawan": "penebak"
-        },
-        {
-            "no": 97,
-            "seed": 263,
-            "lawan": "v2"
-        },
-        {
-            "no": 98,
-            "seed": 258,
-            "lawan": "v1"
-        },
-        {
-            "no": 99,
-            "seed": 164,
-            "lawan": "polisi"
-        },
-        {
-            "no": 100,
-            "seed": 61,
-            "lawan": "penebak"
-        }
-    ]
+ "GK": [
+  {
+   "no": 1,
+   "seed": 190,
+   "lawan": "v2"
+  },
+  {
+   "no": 2,
+   "seed": 138,
+   "lawan": "v1"
+  },
+  {
+   "no": 3,
+   "seed": 36,
+   "lawan": "polisi"
+  },
+  {
+   "no": 4,
+   "seed": 198,
+   "lawan": "penebak"
+  },
+  {
+   "no": 5,
+   "seed": 229,
+   "lawan": "v2"
+  },
+  {
+   "no": 6,
+   "seed": 90,
+   "lawan": "v1"
+  },
+  {
+   "no": 7,
+   "seed": 186,
+   "lawan": "polisi"
+  },
+  {
+   "no": 8,
+   "seed": 203,
+   "lawan": "penebak"
+  },
+  {
+   "no": 9,
+   "seed": 156,
+   "lawan": "v2"
+  },
+  {
+   "no": 10,
+   "seed": 242,
+   "lawan": "v1"
+  },
+  {
+   "no": 11,
+   "seed": 96,
+   "lawan": "polisi"
+  },
+  {
+   "no": 12,
+   "seed": 114,
+   "lawan": "penebak"
+  },
+  {
+   "no": 13,
+   "seed": 165,
+   "lawan": "v2"
+  },
+  {
+   "no": 14,
+   "seed": 215,
+   "lawan": "v1"
+  },
+  {
+   "no": 15,
+   "seed": 91,
+   "lawan": "polisi"
+  },
+  {
+   "no": 16,
+   "seed": 97,
+   "lawan": "penebak"
+  },
+  {
+   "no": 17,
+   "seed": 48,
+   "lawan": "v2"
+  },
+  {
+   "no": 18,
+   "seed": 199,
+   "lawan": "v1"
+  },
+  {
+   "no": 19,
+   "seed": 105,
+   "lawan": "polisi"
+  },
+  {
+   "no": 20,
+   "seed": 15,
+   "lawan": "penebak"
+  },
+  {
+   "no": 21,
+   "seed": 127,
+   "lawan": "v2"
+  },
+  {
+   "no": 22,
+   "seed": 152,
+   "lawan": "v1"
+  },
+  {
+   "no": 23,
+   "seed": 8,
+   "lawan": "polisi"
+  },
+  {
+   "no": 24,
+   "seed": 142,
+   "lawan": "penebak"
+  },
+  {
+   "no": 25,
+   "seed": 33,
+   "lawan": "v2"
+  },
+  {
+   "no": 26,
+   "seed": 213,
+   "lawan": "v1"
+  },
+  {
+   "no": 27,
+   "seed": 212,
+   "lawan": "polisi"
+  },
+  {
+   "no": 28,
+   "seed": 220,
+   "lawan": "penebak"
+  }
+ ],
+ "JC": [
+  {
+   "no": 1,
+   "seed": 247,
+   "lawan": "v2"
+  },
+  {
+   "no": 2,
+   "seed": 250,
+   "lawan": "v1"
+  },
+  {
+   "no": 3,
+   "seed": 99,
+   "lawan": "polisi"
+  },
+  {
+   "no": 4,
+   "seed": 270,
+   "lawan": "penebak"
+  },
+  {
+   "no": 5,
+   "seed": 83,
+   "lawan": "v2"
+  },
+  {
+   "no": 6,
+   "seed": 45,
+   "lawan": "v1"
+  },
+  {
+   "no": 7,
+   "seed": 246,
+   "lawan": "polisi"
+  },
+  {
+   "no": 8,
+   "seed": 10,
+   "lawan": "penebak"
+  },
+  {
+   "no": 9,
+   "seed": 299,
+   "lawan": "v2"
+  },
+  {
+   "no": 10,
+   "seed": 14,
+   "lawan": "v1"
+  },
+  {
+   "no": 11,
+   "seed": 139,
+   "lawan": "polisi"
+  },
+  {
+   "no": 12,
+   "seed": 49,
+   "lawan": "penebak"
+  },
+  {
+   "no": 13,
+   "seed": 171,
+   "lawan": "v2"
+  },
+  {
+   "no": 14,
+   "seed": 214,
+   "lawan": "v1"
+  },
+  {
+   "no": 15,
+   "seed": 191,
+   "lawan": "polisi"
+  },
+  {
+   "no": 16,
+   "seed": 20,
+   "lawan": "penebak"
+  },
+  {
+   "no": 17,
+   "seed": 104,
+   "lawan": "v2"
+  },
+  {
+   "no": 18,
+   "seed": 158,
+   "lawan": "v1"
+  },
+  {
+   "no": 19,
+   "seed": 296,
+   "lawan": "polisi"
+  },
+  {
+   "no": 20,
+   "seed": 209,
+   "lawan": "penebak"
+  },
+  {
+   "no": 21,
+   "seed": 177,
+   "lawan": "v2"
+  },
+  {
+   "no": 22,
+   "seed": 196,
+   "lawan": "v1"
+  },
+  {
+   "no": 23,
+   "seed": 253,
+   "lawan": "polisi"
+  },
+  {
+   "no": 24,
+   "seed": 182,
+   "lawan": "penebak"
+  },
+  {
+   "no": 25,
+   "seed": 101,
+   "lawan": "v2"
+  },
+  {
+   "no": 26,
+   "seed": 18,
+   "lawan": "v1"
+  },
+  {
+   "no": 27,
+   "seed": 228,
+   "lawan": "polisi"
+  },
+  {
+   "no": 28,
+   "seed": 41,
+   "lawan": "penebak"
+  }
+ ],
+ "HD": [
+  {
+   "no": 1,
+   "seed": 276,
+   "lawan": "v2"
+  },
+  {
+   "no": 2,
+   "seed": 277,
+   "lawan": "v1"
+  },
+  {
+   "no": 3,
+   "seed": 166,
+   "lawan": "polisi"
+  },
+  {
+   "no": 4,
+   "seed": 141,
+   "lawan": "penebak"
+  },
+  {
+   "no": 5,
+   "seed": 79,
+   "lawan": "v2"
+  },
+  {
+   "no": 6,
+   "seed": 290,
+   "lawan": "v1"
+  },
+  {
+   "no": 7,
+   "seed": 103,
+   "lawan": "polisi"
+  },
+  {
+   "no": 8,
+   "seed": 144,
+   "lawan": "penebak"
+  },
+  {
+   "no": 9,
+   "seed": 65,
+   "lawan": "v2"
+  },
+  {
+   "no": 10,
+   "seed": 140,
+   "lawan": "v1"
+  },
+  {
+   "no": 11,
+   "seed": 275,
+   "lawan": "polisi"
+  },
+  {
+   "no": 12,
+   "seed": 221,
+   "lawan": "penebak"
+  },
+  {
+   "no": 13,
+   "seed": 173,
+   "lawan": "v2"
+  },
+  {
+   "no": 14,
+   "seed": 117,
+   "lawan": "v1"
+  },
+  {
+   "no": 15,
+   "seed": 180,
+   "lawan": "polisi"
+  },
+  {
+   "no": 16,
+   "seed": 280,
+   "lawan": "penebak"
+  },
+  {
+   "no": 17,
+   "seed": 32,
+   "lawan": "v2"
+  },
+  {
+   "no": 18,
+   "seed": 59,
+   "lawan": "v1"
+  },
+  {
+   "no": 19,
+   "seed": 124,
+   "lawan": "polisi"
+  },
+  {
+   "no": 20,
+   "seed": 37,
+   "lawan": "penebak"
+  },
+  {
+   "no": 21,
+   "seed": 121,
+   "lawan": "v2"
+  },
+  {
+   "no": 22,
+   "seed": 110,
+   "lawan": "v1"
+  },
+  {
+   "no": 23,
+   "seed": 160,
+   "lawan": "polisi"
+  },
+  {
+   "no": 24,
+   "seed": 184,
+   "lawan": "penebak"
+  },
+  {
+   "no": 25,
+   "seed": 27,
+   "lawan": "v2"
+  },
+  {
+   "no": 26,
+   "seed": 172,
+   "lawan": "v1"
+  },
+  {
+   "no": 27,
+   "seed": 134,
+   "lawan": "polisi"
+  },
+  {
+   "no": 28,
+   "seed": 181,
+   "lawan": "penebak"
+  }
+ ]
 }
