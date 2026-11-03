@@ -2,12 +2,15 @@
 Evaluasi: semua log test mode diputar ulang melawan setiap Detektif AI di daftar_ai.py.
 
   python evaluasi.py      -> hasil/evaluasi.csv (semua baris) dan hasil/evaluasi.md (tabel laporan)
+
+Bagian tambahan (game live, tuduhan terbukti vs menebak, efek belajar) dihitung di analisis_playtest.py.
 """
 import csv
 import math
 import os
 from collections import Counter, defaultdict
 
+from analisis_playtest import teks_analisis
 from daftar_ai import LAWAN_AI
 from replay import muat_log, replay
 
@@ -119,10 +122,11 @@ def tabel_markdown(ringkasan, pemain):
 
 
 def main():
-    baris = jalankan(baca_log())
+    logs = baca_log()
+    baris = jalankan(logs)
     os.makedirs(FOLDER_HASIL, exist_ok=True)
     tulis_csv(baris, os.path.join(FOLDER_HASIL, 'evaluasi.csv'))
-    teks = tabel_markdown(ringkas(baris), per_pemain(baris))
+    teks = tabel_markdown(ringkas(baris), per_pemain(baris)) + '\n' + teks_analisis(baris, logs, ringkas_ai, persen)
     with open(os.path.join(FOLDER_HASIL, 'evaluasi.md'), 'w', encoding='utf-8') as f:
         f.write(teks + '\n')
     print(teks)

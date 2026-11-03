@@ -39,7 +39,7 @@ class TimRekaman(Tim):
             # menemukannya lebih dulu. Aksi tim tetap diputar persis seperti di log; kejadiannya dihitung.
             game.tp_holder = ('tim', d)
             self.konflik_teleport += 1
-        game.tim_aksi(d, aksi)
+        return game.tim_aksi(d, aksi)
 
     def sidang(self):
         t = self.tuduhan_log
